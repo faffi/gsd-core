@@ -1,14 +1,60 @@
 ---
 id: SEED-001
-status: dormant
+status: triggered
 planted: 2026-08-20
 planted_during: no active milestone — gsd-core fork, personal branches
-trigger_when: the four operator questions in §7 are answered
-scope: medium
+trigger_when: fired 2026-08-20 — operator promoted it; tracked as a todo
+scope: small
+build_with: skill-creator (Anthropic skill)
 area: tooling
 title: A `handoff` skill that merges rather than regenerates
 problem_statement: .planning/research/2026-08-20-pause-work-missing-directives-and-template-defects.md
+promoted_to: .planning/todos/pending/2026-08-20-build-a-handoff-skill-that-merges-rather-than-regenerates.md
 ---
+
+## Why This Matters
+
+*Derived from the spec and its problem statement, not from a separate interview.*
+
+**The load-bearing difference is regenerate vs merge.** `/gsd-pause-work` rewrites the
+handoff from current artifacts. The operator's standard is to read the prior handoff first
+and carry forward every open item. Regeneration drops unresolved items **silently** — the
+output looks complete while an open item has vanished. The spec is explicit that this
+"cannot be expressed as a section addition", which is why it is a separate skill and not a
+patch.
+
+**The template captures state well and deltas to prior belief not at all.** State is
+derivable from git and STATE.md by any agent at any time. What is *not* derivable is what
+the session learned that contradicts, reorders, or re-scopes something already written
+down — contradictions, reversals, and negative directives (the road not taken, the most
+perishable class, which nobody writes down).
+
+**Losing a correction produces a wrong action, not a redundant one.** Every other omission
+costs a rediscovery cycle. This one costs correctness: a resuming agent trusts the artifact
+on disk — normally the right instinct — and acts on a superseded instruction. Demonstrated
+live in the 2026-08-20 session, where stale `CLAUDE.md` guidance sent an agent to build a
+GSD workspace that the fork's branch model had already made unnecessary.
+
+**Unverified state gets asserted as fact.** Nothing in the current workflow forces
+measure-over-remember. Observed: a session authored a handoff while 18 commits behind
+`origin/main`, asserting a `main` SHA that was not `main`, with no symptom until a peer
+warned it.
+
+## When to Surface
+
+Trigger fired **2026-08-20** — promoted directly by the operator rather than waiting on
+§7's four questions, which are decisions to be made while building rather than before.
+Tracked as an actionable todo; see `promoted_to`.
+
+## Scope Estimate
+
+**Small** — a few hours. Inferred, not stated: the operator specified the *method*
+(Anthropic's `skill-creator` skill) rather than a size. `skill-creator` handles SKILL.md
+structure, description tuning, and evals, so the authoring half is largely mechanical and
+the spec below is already implementation-ready. The residual work is the §7 decisions and
+the merge/verify logic, not the scaffolding. Revise upward if the `/gsd-resume-work` read
+side turns out to need changing too — a handoff nothing reads back is write-only.
+
 
 > **Imported 2026-08-20.** Drafted in a separate `bootstrap-terraform` session. This is the
 > proposed *solution* to the problem statement in

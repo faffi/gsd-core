@@ -1,5 +1,7 @@
 > **Filed 2026-08-20.** Problem statement. The proposed solution is
-> `.planning/seeds/SEED-001-handoff-skill.md`, which supersedes the "Proposed directive"
+> `.planning/seeds/SEED-001-handoff-skill.md` (promoted 2026-08-20 to
+> `.planning/todos/pending/2026-08-20-build-a-handoff-skill-that-merges-rather-than-regenerates.md`),
+> which supersedes the "Proposed directive"
 > lines below for defects 1-5: it argues the fix is a **separate skill**, not a patch to
 > `pause-work.md`, because the regenerate-vs-merge difference cannot be expressed as a
 > section addition. Defect 6 and the phase-glob bug are genuine `pause-work.md` bugs and
