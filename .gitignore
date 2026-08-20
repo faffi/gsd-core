@@ -42,6 +42,7 @@ RAILROAD_ARCHITECTURE.md
 !.planning/seeds/
 !.planning/research/
 !.planning/reference/
+!.planning/runbooks/
 
 # Personal patch (same branch): re-include our own CLAUDE.md, negating the bare
 # `CLAUDE.md` exclusion further up. Upstream ignores it because CONTEXT.md is the

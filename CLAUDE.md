@@ -80,7 +80,7 @@ off current `next` — **after** the issue is opened and approved, not before.
 
 Upstream ignores `.planning/` wholesale (`a52248cb` deleted its own, 1,540 lines — it ships
 as an npm package and its dogfooding artifacts are consumer noise). This fork narrows that
-on the `working` and `local/*` branches only (`.gitignore:40-44`), so four directories are
+on the `working` and `local/*` branches only (`.gitignore:40-44`), so five directories are
 tracked. `next` keeps the blanket ignore byte-identical and carries **zero** `.planning`
 entries, so none of this can reach a contribution branch.
 
@@ -88,8 +88,12 @@ entries, so none of this can reach a contribution branch.
 |---|---|---|---|
 | `reference/` | How a thing works. Consulted repeatedly. | plain, undated | **a bug** — fix or re-verify |
 | `research/` | A measurement taken on a date against a version. | `YYYY-MM-DD-<slug>.md` | **expected** — each states its own version |
+| `runbooks/` | Do these steps, in this order. | plain, undated | **a bug** — the steps are wrong |
 | `seeds/` | A proposal awaiting a decision, with a trigger condition. | **`SEED-NNN-<slug>.md`** | n/a — it hasn't happened yet |
 | `todos/pending/` | An actionable work item with a severity. | `YYYY-MM-DD-<slug>.md` | n/a — close it or it's still true |
+
+Start here for procedure: **`.planning/runbooks/fork-install-and-update.md`** — how to
+build, install, and update from this fork, and why `/gsd-update` must never be run.
 
 **The distinction that matters:** `reference/` claims to be true *now*, `research/` claims
 only to have been true *on its stated date against its stated version*. Never promote a
