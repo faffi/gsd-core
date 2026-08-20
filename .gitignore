@@ -30,7 +30,15 @@ animation/
 # Internal planning documents
 reports/
 RAILROAD_ARCHITECTURE.md
-.planning/
+# Personal patch (local/track-planning-history): .planning/ itself is no longer
+# excluded (changed from bare `.planning/` to `.planning/*` — git cannot re-include
+# anything inside a directory excluded by the bare form, per gitignore's documented
+# limitation), so its contents are excluded one level down instead, with todos/seeds
+# negated back in. working/local/* only — next and any real contribution branch stay
+# byte-identical to upstream's blanket .planning/ ignore.
+.planning/*
+!.planning/todos/
+!.planning/seeds/
 analysis/
 docs/GSD-MASTER-ARCHITECTURE.md
 docs/GSD-RUST-IMPLEMENTATION-GUIDE.md
