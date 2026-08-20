@@ -7,7 +7,7 @@ build_with: skill-creator (Anthropic skill)
 files:
   - .planning/seeds/SEED-001-handoff-skill.md (the full spec — build from this)
   - .planning/research/2026-08-20-pause-work-missing-directives-and-template-defects.md (problem statement, 6 defects)
-  - ~/.claude/skills/<name>/SKILL.md (the artifact to create)
+  - skills/gsd-handoff/SKILL.md (the artifact to create — IN THIS REPO, on a local/* branch)
 ---
 
 ## Problem
@@ -23,23 +23,29 @@ this is a new skill rather than another patch to `pause-work.md`.
 Full rationale, process, schemas and anti-patterns: **`.planning/seeds/SEED-001-handoff-skill.md`**.
 Empirical problem statement (6 defects, measured): the research doc in `files:` above.
 
-## ⚠ Do NOT name it `gsd-handoff`
+## Name it `gsd-handoff`, and ship it from this fork
 
-The spec calls it `/gsd-handoff`. **That name is deleted on every GSD update.** Verified in
-this repo at v1.11.0:
+It lives at **`skills/gsd-handoff/SKILL.md` in this repo**, on a `local/*` branch, and
+reaches `~/.claude` because this fork is the install source.
 
-- `bin/install.js:10823-10826` — `readdirSync(skills).filter(e => e.name.startsWith('gsd-'))`
-  then `fs.rmSync(..., { recursive: true })`. Unconditional recursive delete, no warning.
-- `bin/install.js:4046` — stated contract: *"Non-gsd-\* dirs and their agents/ content are
-  never touched."*
-- `gsd-core/bin/lib/legacy-cleanup.cjs:55-58` — `GSD_SKILL_DIR_PREFIX = 'gsd-'`; only that
-  prefix is scanned.
-- One allowlisted exception: `_userOwnedSkillDirs = new Set(['gsd-dev-preferences'])`
-  (`bin/install.js:4057`).
+The `gsd-` prefix is correct here, not a hazard. `bin/install.js` reads from
+`path.join(__dirname, '..')` (`:10000`) — this repo — and writes to the target. The
+recursive `rmSync` over `skills/gsd-*` (`:10823-10826`) is a **wipe-then-replace-from-source**,
+so a `gsd-*` skill present in the fork is replaced with itself. The prefix is also what
+puts it in the same namespace as every other GSD skill, which `--surface` and the `gsd-ns-*`
+routers key on.
 
-Precedent both ways: `skills/mempalace-rooms/` (no prefix) has survived updates; everything
-`gsd-*` has not. **Name it `handoff`.** The whole reason to build a skill instead of
-patching `gsd-core/` is update-survival — a `gsd-` prefix throws that away.
+**The real hazard is the install command, not the name:**
+
+| Command | Source | This skill |
+|---|---|---|
+| `node bin/install.js --claude --global` from this repo | **this fork** | survives — it IS the source |
+| `/gsd-update`, which runs `npx -y --package=@opengsd/gsd-core@TAG` (`gsd-core/workflows/update.md:383-393`) | upstream npm | **destroyed** — upstream has no `gsd-handoff` |
+
+So: install from the fork, and treat `/gsd-update` as "fetch upstream into `next`, then
+rebuild `working` and reinstall from here" rather than as a command to run directly.
+
+Name is free — no `skills/gsd-handoff` in this repo (71 skills) and none in `~/.claude`.
 
 ## Build method
 

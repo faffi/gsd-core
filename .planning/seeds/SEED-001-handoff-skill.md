@@ -62,24 +62,21 @@ side turns out to need changing too — a handoff nothing reads back is write-on
 > read that first. Filed as a seed, not a todo, because §7 holds four unanswered operator
 > questions that block execution.
 >
-> **⚠ Correction to §1 — the skill name in this spec would be deleted on every GSD update.**
-> The spec's conclusion ("prefer a skill over a `gsd-core/` patch") is right. Its stated
-> reason — *"a standalone skill under `~/.claude/skills/` survives"* — is only true for
-> skills **not** prefixed `gsd-`. Verified in this repo at v1.11.0:
+> **⚠ Correction to §1 — the durability argument, restated for this fork.**
+> §1 says a `gsd-core/` patch is wiped by every GSD update while a skill under
+> `~/.claude/skills/` survives, and concludes "prefer the skill". The conclusion holds, but
+> the mechanism is different here and the `gsd-` prefix is **fine**.
 >
-> - `bin/install.js:10823-10826` — `readdirSync(skills).filter(e => e.name.startsWith('gsd-'))`
->   then `fs.rmSync(..., { recursive: true })`. Unconditional recursive delete.
-> - `bin/install.js:4039-4046` — stated contract: *"Only touches directories whose names
->   start with `gsd-`… Non-gsd-\* dirs and their agents/ content are never touched."*
-> - `gsd-core/bin/lib/legacy-cleanup.cjs:55-58` — `GSD_SKILL_DIR_PREFIX = 'gsd-'`; only
->   `gsd-*` subdirectories are scanned.
-> - The single exception is an allowlist of one: `_userOwnedSkillDirs = new Set(['gsd-dev-preferences'])`
->   (`bin/install.js:4057`).
+> This fork is the install source: `bin/install.js` reads from `path.join(__dirname, '..')`
+> (`:10000`) and writes to the target, so the recursive `rmSync` over `skills/gsd-*`
+> (`:10823-10826`) is wipe-then-replace-*from this repo*. A `gsd-handoff` skill committed to
+> `skills/` on a `local/*` branch is therefore durable, and keeps the namespace every other
+> GSD skill uses.
 >
-> So `/gsd-handoff` as specced lands squarely in the delete path. Precedent both ways:
-> `skills/mempalace-rooms/` (no prefix) has survived updates; anything `gsd-*` has not.
-> **Name it without the `gsd-` prefix** — `handoff` — or the whole durability argument
-> for building a skill collapses.
+> What actually destroys it is the **install command**: `/gsd-update` shells out to
+> `npx -y --package=@opengsd/gsd-core@TAG` (`gsd-core/workflows/update.md:383-393`), which
+> installs upstream's tree — and upstream has no `gsd-handoff`. Install with
+> `node bin/install.js --claude --global` from this checkout instead.
 >
 > Also: §1's "Detail:" pointer to `~/.claude/notes/gsd-pause-work-defects.md` is stale;
 > that document is now the `problem_statement` path in the frontmatter above.
