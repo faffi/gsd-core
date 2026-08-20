@@ -1,3 +1,20 @@
+> **Filed 2026-08-20.** Problem statement. The proposed solution is
+> `.planning/seeds/SEED-handoff-skill.md`, which supersedes the "Proposed directive"
+> lines below for defects 1-5: it argues the fix is a **separate skill**, not a patch to
+> `pause-work.md`, because the regenerate-vs-merge difference cannot be expressed as a
+> section addition. Defect 6 and the phase-glob bug are genuine `pause-work.md` bugs and
+> are NOT addressed by that skill.
+>
+> Citations re-verified against v1.11.0 at filing: `pause-work.md` is byte-stable across
+> 1.10.0 -> 1.11.0 (250 lines both; `Context Detection`:12, `write_structured`:66,
+> `success_criteria`:243 all unmoved), and the duplicate `Critical Anti-Patterns` at :139
+> and :184 is still present. Every line number below holds.
+>
+> Its own "Status" section references `~/.claude/notes/gsd-glab-port.md`; that is now
+> `.planning/research/2026-08-17-glab-forge-port-map.md`.
+
+---
+
 # `/gsd-pause-work` — missing directives and template defects
 
 **Verified 2026-08-20 against installed gsd-core `1.10.0`**, file
@@ -136,7 +153,7 @@ carelessness but because evidence kept arriving after the document did.
 ## Status
 
 **Not reported upstream.** Unknown whether open-gsd accepts workflow-level contributions; note that
-`~/.claude/notes/gsd-glab-port.md` records the maintainer closing a different request with *"we use
+`.planning/research/2026-08-17-glab-forge-port-map.md` records the maintainer closing a different request with *"we use
 GitHub exclusively"*, so upstream receptiveness should not be assumed.
 
 If implemented locally, this is a `gsd-core/` edit and therefore **wiped by every GSD update** —
