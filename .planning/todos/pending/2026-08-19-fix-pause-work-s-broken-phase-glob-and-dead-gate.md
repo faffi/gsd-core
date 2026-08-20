@@ -24,9 +24,8 @@ files:
   - gsd-core/workflows/resume-project.md:112
   - templates/continue-here.md:77
   - gsd-core/bin/lib/commands.cjs:1030
-  - gsd-pause-work-upstream-report.md (supplementary evidence; lives in the faffi/dotclaude
-    repo, ~/.claude/ — locate by filename, path is not stable. This todo is self-contained
-    without it.)
+  - .planning/research/2026-08-19-pause-work-phase-glob-upstream-report.md (evidence, in-repo)
+  - .planning/research/2026-08-20-pause-work-missing-directives-and-template-defects.md (related: template defects in the same workflow)
 ---
 
 ## Problem

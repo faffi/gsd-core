@@ -14,7 +14,7 @@ files:
   - gsd-core/references/checkpoints.md:414 (byte-stable)
   - ~/.claude/scripts/gsd-local-patches-1.10.0.diff (the patch to re-author)
   - ~/.claude/gsd-pristine/gsd-core/ (1.10.0 baseline the patch was authored against)
-  - ~/.claude/notes/gsd-glab-port.md (the source port map)
+  - .planning/research/2026-08-17-glab-forge-port-map.md (the source port map)
 ---
 
 ## Problem
@@ -34,7 +34,7 @@ Originally filed `major` on the assumption this was version drift only; raised t
 GSD's forge-facing workflows are GitHub-only: they shell out to `gh` with no `glab`
 path. On a GitLab remote, `/gsd-ship` cannot open an MR and `/gsd-inbox` cannot triage.
 A full `gh` → `glab` port was researched, implemented, and verified as a local patch
-against **GSD 1.10.0** (see `~/.claude/notes/gsd-glab-port.md`, verified 2026-08-17
+against **GSD 1.10.0** (see `.planning/research/2026-08-17-glab-forge-port-map.md`, verified 2026-08-17
 against context7 `/gitlab_gitlab-org/cli` and the installed `glab 1.107.0` binary).
 
 **Upstream is permanently closed to this.** `open-gsd/gsd-core#2138` asked for glab
@@ -42,7 +42,7 @@ support; maintainer reply 2026-07-12: *"gitlab will not be added, it is not supp
 by us. we use GitHub exclusively."* This can only ever live locally. Do not re-propose.
 
 The patch currently lives at `~/.claude/scripts/gsd-local-patches-1.10.0.diff` (item 14
-in `~/.claude/runbooks/gsd-update-runbook.md`), applied to an installed **1.10.0** tree. This repo's
+in `~/.claude/runbooks/gsd-update-runbook.md` (stays in dotclaude — it patches the installed tree)), applied to an installed **1.10.0** tree. This repo's
 `next` is at **1.11.0**. The patch has drifted and has a real coverage hole.
 
 ## Verification (this repo, 2026-08-20)
@@ -278,18 +278,18 @@ workflow branches on it. Note it, don't block on it.
 
 ## External artifacts this todo depends on
 
-Three artifacts live outside this repo, in the `faffi/dotclaude` repo (`~/.claude`).
-Paths there are not stable — locate by **filename**, not by the path below, and update
-this list if you move them. Everything else needed to do the work is inline above.
+**Two** artifacts live outside this repo, in the `faffi/dotclaude` repo (`~/.claude`) —
+both bound to the *installed* GSD tree, which is why they stay there rather than moving
+in here. Locate by **filename**, not by path. Everything else is in this repo.
 
 | Artifact | Path at time of writing | Why it is needed |
 |---|---|---|
 | `gsd-local-patches-1.10.0.diff` | `~/.claude/scripts/` | **The port itself.** Source of truth — the note under-documents it (Finding 2). Without this the work restarts from scratch. |
 | `gsd-pristine/gsd-core/` (16 files) | `~/.claude/gsd-pristine/` | The 1.10.0 baseline the patch was authored against; every provenance diff resolves here. Reproducible via `git show v1.10.0:<path>` if lost. |
-| `gsd-glab-port.md` | `~/.claude/notes/` | Provenance only — flag reference and trap list. Known to under-document the patch; **work from the diff, not this.** |
+| `2026-08-17-glab-forge-port-map.md` | `.planning/research/` (in this repo) | Provenance only — flag reference and trap list. Known to under-document the patch; **work from the diff, not this.** |
 
-Only the first is genuinely irreplaceable. The baseline regenerates from this repo's own
-`v1.10.0` tag, and the note's durable content is already reproduced in this todo.
+Only the patch is genuinely irreplaceable. The baseline regenerates from this repo's own
+`v1.10.0` tag, and the port map's durable content is already reproduced in this todo.
 
 Once the work lands as `local/glab-forge-port` in this repo, all three become historical
 and this section can be deleted.

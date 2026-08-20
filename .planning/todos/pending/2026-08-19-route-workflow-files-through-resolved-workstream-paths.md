@@ -16,9 +16,7 @@ files:
   - gsd-core/workflows/pause-work.md:67
   - gsd-core/workflows/review.md
   - gsd-core/workflows/pr-branch.md
-  - gsd-workstream-commit-path-defect.md (supplementary evidence, incl. live gsd-tools run
-    output; lives in the faffi/dotclaude repo, ~/.claude/ — locate by filename, path is not
-    stable. This todo is self-contained without it.)
+  - .planning/research/2026-08-19-workstream-commit-path-defect.md (evidence, in-repo; incl. live gsd-tools run output)
 ---
 
 ## Problem

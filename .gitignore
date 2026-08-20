@@ -41,6 +41,7 @@ RAILROAD_ARCHITECTURE.md
 !.planning/todos/
 !.planning/seeds/
 !.planning/research/
+!.planning/reference/
 analysis/
 docs/GSD-MASTER-ARCHITECTURE.md
 docs/GSD-RUST-IMPLEMENTATION-GUIDE.md
