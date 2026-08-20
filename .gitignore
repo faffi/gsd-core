@@ -34,8 +34,9 @@ RAILROAD_ARCHITECTURE.md
 # excluded (changed from bare `.planning/` to `.planning/*` — git cannot re-include
 # anything inside a directory excluded by the bare form, per gitignore's documented
 # limitation), so its contents are excluded one level down instead, with todos/seeds
-# negated back in. working/local/* only — next and any real contribution branch stay
-# byte-identical to upstream's blanket .planning/ ignore.
+# negated back in. Applies to the `working` branch and `local/*` branches ONLY — next
+# and any real contribution branch stay byte-identical to upstream's blanket
+# .planning/ ignore, so this can never leak into a PR.
 .planning/*
 !.planning/todos/
 !.planning/seeds/
