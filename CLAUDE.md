@@ -88,7 +88,7 @@ entries, so none of this can reach a contribution branch.
 |---|---|---|---|
 | `reference/` | How a thing works. Consulted repeatedly. | plain, undated | **a bug** — fix or re-verify |
 | `research/` | A measurement taken on a date against a version. | `YYYY-MM-DD-<slug>.md` | **expected** — each states its own version |
-| `seeds/` | A proposal awaiting a decision, with a trigger condition. | **`SEED-*.md`** | n/a — it hasn't happened yet |
+| `seeds/` | A proposal awaiting a decision, with a trigger condition. | **`SEED-NNN-<slug>.md`** | n/a — it hasn't happened yet |
 | `todos/pending/` | An actionable work item with a severity. | `YYYY-MM-DD-<slug>.md` | n/a — close it or it's still true |
 
 **The distinction that matters:** `reference/` claims to be true *now*, `research/` claims
@@ -98,9 +98,14 @@ silently dropped.
 
 ### Rules that bite
 
-- **`SEED-` is enforced in code, not convention.** `src/audit.cts:788` skips any file not
-  matching `SEED-*.md`, so a mis-named seed is invisible to the scanner.
-  `gsd-core/workflows/explore.md:202` documents `{slug}.md` and is wrong.
+- **Seeds have a machine contract; hand-writing one gets it wrong.** Use
+  `/gsd-capture --seed`. Filename must be `SEED-{zero-padded}-{slug}.md` and frontmatter
+  must be `id, status, planted, planted_during, trigger_when, scope` (`plant-seed.md:65-81`).
+  Get it wrong and failures are *partial*, which is worse than loud: `gsd-tools list-seeds`
+  still lists the file but renders blank columns for every key it could not find, and
+  `--enrich` cannot target it at all because it greps `SEED-[0-9]+` (`plant-seed.md:26`).
+  `src/audit.cts:788` additionally skips anything not matching `SEED-*.md`, and
+  `gsd-core/workflows/explore.md:202` documents `{slug}.md`, which is simply wrong.
 - **`reference/gsd-config-schema.md` is generated — never hand-edit.** Regenerate from this
   repo root: `node ~/.claude/scripts/gen-gsd-config-schema.cjs` (writes to the cwd's
   `.planning/reference/`; reads `~/.claude/gsd-core` unless `GSD_HOME` points here). Diff

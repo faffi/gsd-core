@@ -1,10 +1,12 @@
 ---
-title: A `handoff` skill that merges rather than regenerates
-trigger_condition: >-
-  Promote when the four open questions in §7 are answered. Blocked on operator
-  decisions, not on implementation difficulty.
-planted_date: 2026-08-20
+id: SEED-001
+status: dormant
+planted: 2026-08-20
+planted_during: no active milestone — gsd-core fork, personal branches
+trigger_when: the four operator questions in §7 are answered
+scope: medium
 area: tooling
+title: A `handoff` skill that merges rather than regenerates
 problem_statement: .planning/research/2026-08-20-pause-work-missing-directives-and-template-defects.md
 ---
 
