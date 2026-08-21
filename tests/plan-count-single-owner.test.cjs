@@ -207,6 +207,35 @@ const SCENARIOS = [
     },
   },
   {
+    // The FALSE-COMPLETE mirror of row11b. On pristine, a phase directory
+    // holding nothing but a plan-check report and its own summary pairs 1:1
+    // and reports completed:true -- a phase that was never planned reads as
+    // done. Measured on pristine: allPlanFiles=1 planCount=1 summaryCount=1
+    // completed=TRUE.
+    //
+    // This is reachable only because #2349 gates completion on
+    // `allPlanFiles.length > 0` (deliberately, so an all-superseded phase
+    // reads complete rather than being pinned forever). That gate is correct
+    // for superseded plans, but it means ANY non-plan file that reaches
+    // allPlanFiles satisfies the "phase had plans" precondition by itself.
+    //
+    // Both directions close with the same exclusion, because it removes the
+    // file from allPlanFiles -- the array `completed` actually reads. This
+    // row is separate from row11b because they are distinct defects: a
+    // wrongly-incomplete phase nags, a wrongly-complete one is silent.
+    id: 'row11c',
+    label: 'PLAN-CHECK + its own SUMMARY -> phase does NOT falsely read complete',
+    build(dir) {
+      writeFile(dir, '01-PLAN-CHECK.md', planBody());
+      writeFile(dir, '01-PLAN-CHECK-SUMMARY.md', summaryBody());
+    },
+    check(scan) {
+      assert.strictEqual(scan.allPlanFiles.length, 0);
+      assert.strictEqual(scan.planCount, 0);
+      assert.strictEqual(scan.completed, false);
+    },
+  },
+  {
     id: 'row12',
     label: 'stray summary with no matching plan -> summaryCount excludes it',
     build(dir) {
