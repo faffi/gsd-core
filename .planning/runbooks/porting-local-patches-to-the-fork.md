@@ -414,8 +414,16 @@ dependency — but **neither half is self-contained at the file list first given
   "abort if CYCLE_SUMMARY absent" contract catches it) **or** the review subagent improvises,
   falls back to `gsd-review` or hand-rolls a review, and still emits a well-formed
   `CYCLE_SUMMARY` — the loop then reports counts as if the intended review ran. The silent branch
-  could not be ruled out. **Bring the skill onto the same branch**; it is a single self-contained
+  could not be ruled out. **Bring the skill onto the same branch** — but note the correction below; it is a single self-contained
   `SKILL.md`.
+- ⚠⚠ **CORRECTED 2026-08-20: `skills/gsd-review-concurrent/` DOES NOT EXIST IN THIS REPO.**
+  Not on any branch, not in this repo's history, and not in the pristine 1.10.0 baseline — it
+  exists only in the installed `~/.claude/skills/` tree (217 lines, authored 2026-08-12). The
+  local-patch diff was scoped to `~/.claude/gsd-core/`, and `skills/` is a **sibling** of
+  `gsd-core/`, not a child — so it was invisible to the entire analysis. "Bring the skill onto
+  the same branch" therefore means **importing a whole new skill**, not moving an existing one.
+  Worse, `make install` **destroys** it (proven by execution). Tracked as a blocker:
+  `.planning/todos/pending/2026-08-20-local-only-skills-and-agent-destroyed-by-make-install.md`.
 - ⚠ **3→5 is not "bounded like today."** `MAX_CYCLES` is the **only** hard bound. Stall detection
   (`§5c`) is informational — it prints a warning and falls through, with no early exit. No token
   budget, no wall-clock budget. Declared per-lane ceilings sum in the sequential path

@@ -15,6 +15,11 @@ files:
   - ~/.claude/scripts/gsd-local-patches-1.10.0.diff (the patch to re-author)
   - ~/.claude/gsd-pristine/gsd-core/ (1.10.0 baseline the patch was authored against)
   - .planning/research/2026-08-17-glab-forge-port-map.md (the source port map)
+  - .planning/runbooks/porting-local-patches-assets/glab/fence-derive.sh (inertness proof — $FORGE never reaches its guards)
+  - .planning/runbooks/porting-local-patches-assets/glab/fence-create-pr.sh (inertness proof — the create-pr fence)
+  - .planning/runbooks/porting-local-patches-assets/glab/stubbin/gh (stub used to prove which binary is actually invoked)
+  - .planning/runbooks/porting-local-patches-assets/glab/stubbin/glab (stub used to prove which binary is actually invoked)
+  - .planning/runbooks/porting-local-patches-to-the-fork.md (§4.9 and §4c — this todo's row in the port campaign)
 ---
 
 ## Problem

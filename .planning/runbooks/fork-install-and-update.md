@@ -25,6 +25,18 @@ not a destroy. It is also why a `gsd-`-prefixed skill is correct rather than dan
 
 ## Install
 
+> ⛔ **STOP — `make install` currently destroys three local-only artifacts.**
+> Proven by execution 2026-08-20: `bin/install.js:10820-10829` `rmSync`s every `skills/gsd-*`
+> directory and replaces them *from this repo*, so any `gsd-*` skill or agent that exists only
+> in `~/.claude` is deleted and never restored. Three do:
+> `skills/gsd-review-concurrent` (217 lines), `skills/gsd-graph` (108),
+> `agents/gsd-prd-reviewer.md` (41). The installer prints `✓ Installed 72 skills` and exits 0 —
+> **it never names what it removed.**
+> Contents are rescued at `.planning/runbooks/local-only-artifacts/`, but that is a stopgap:
+> nothing loads a skill from `.planning/`. Fix first —
+> `.planning/todos/pending/2026-08-20-local-only-skills-and-agent-destroyed-by-make-install.md`.
+
+
 ```bash
 cd ~/Documents/git/personal/gsd-core
 git checkout working          # the integrated set; a local/* branch installs ONE feature
