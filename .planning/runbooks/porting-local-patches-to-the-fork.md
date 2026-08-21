@@ -118,20 +118,42 @@ Ordered by recommended sequence. Each is independent unless noted.
   `gsd-plan-checker` returns an inline YAML block (`gsd-core/workflows/plan-phase.md:1085`),
   not a file. The incident is real and documented (`~/.claude/runbooks/gsd-update-runbook.md:259-272`
   — rbac-backport phase 05 read 7 plans/6 summaries pristine, 6/6 patched), but do not claim
-  a producer upstream without locating one. The regex defect alone justifies the fix. Without the exclusion it falls
+  a producer upstream without locating one. The regex defect alone justifies the fix.
+  **The artifact itself was found** at
+  `~/gsd-workspaces/plane-audit-logs/plane/.planning/workstreams/rbac-backport/phases/05-*/05-PLAN-CHECK.md`
+  — a real "Phase 05 Plan Check" report beside exactly 6 PLAN/SUMMARY pairs, matching the
+  incident. But `gsd-plan-checker`'s frontmatter carries `disallowedTools: Write, Edit, MultiEdit`,
+  so that agent **cannot** have written it, and no workflow at 1.10.0 or 1.11.0 has a `Write`
+  targeting that name. Honest framing: "reapply if this recurs", not "this happens today". Without the exclusion it falls
   through the loose `/PLAN/i` fallback in `isRootPlanFile` and counts as an executable plan.
 - **Consequence (stated in the patch):** a phase with N real plans and N summaries reads
   N+1 plans / N summaries → `implementation_complete: false`. **A phase that can never
   register as done.**
-- **Effectiveness:** high. Precise, one-line-class fix with a named wrong outcome.
+- **Effectiveness:** high for the observed instance. ⚠ **Not a "class" fix** — validated
+  2026-08-20 by enumeration against patched and unpatched `isRootPlanFile`. It excludes exactly
+  one anchored literal (`-PLAN-CHECK.md$`, case-insensitive). These all still leak and
+  reproduce the identical N+1 failure: `-PLAN-NOTES.md`, `-PLAN-DRAFT.md`, `-REPLAN.md`,
+  `PLANNING.md`, `05-planning.md`, `-PLAN-CHECKLIST.md`, and bare `PLAN-CHECK.md` (no dash).
+  Frame it as "fixes the one observed instance"; the underlying defect is the unanchored
+  `/PLAN/i` fallback itself.
 - **Robustness:** good — it extends an existing exclusion list rather than adding a new
   mechanism. Carries its own reapplication date (2026-08-04, reapplied 2026-08-12).
 - **Upstream viability: strongest of the set.** Pure bug fix, trivially testable, no
   preference component.
 - **Why first:** smallest surface, easiest RED test, establishes the whole pattern
   (branch → translate `.cjs`→`.cts` → TDD → changeset → build → verify) at minimum scale.
-- **Test shape:** fixture phase dir with N plans + N summaries + one `PLAN-CHECK.md`;
-  assert `implementation_complete === true`. Fails before, passes after.
+- **Test shape — already written and run.** Mirror `row11` (`-PLAN-REVIEW.md`) in
+  `tests/plan-count-single-owner.test.cjs:173-184`. Measured on a real 3-pair fixture against
+  this repo's built `plan-scan.cjs`:
+  `BEFORE → planCount 4, summaryCount 3, completed false` · `AFTER → 3, 3, true`.
+  RED confirmed mechanically (`2 !== 1`), GREEN confirmed with the patch applied to a /tmp copy.
+- **Robustness — the mechanism is right, and deliberately so.** `src/plan-scan.cts:119-134`
+  documents that the loose fallback is *intentionally* permissive so an off-pattern real plan
+  (lowercase `plan.md`) still counts; `plan-count-single-owner.test.cjs` row12+ pins that.
+  Tightening the fallback risks false negatives on real plans. Named anchored exclusions have
+  zero false-negative risk — verified `-PLAN-CHECKLIST.md` still counts, so the anchor does not
+  over-match. Three such regexes already exist (`OUTLINE`/`PRE_BOUNCE`/`REVIEW`); this is the
+  established pattern, just an incomplete application of it.
 
 ### 4.2 — context7: `resolve-library-id` requires `query` as well as `libraryName`
 
@@ -234,8 +256,26 @@ Ordered by recommended sequence. Each is independent unless noted.
   Agent call sites pass `document` so the planner stops spending budget on the project's own
   planning notes — **68% of nodes in the measured repo** — while rules can still join
   against them.
-- **Effectiveness:** high; the conceptual split is the real contribution.
-- **Robustness:** additive flag, default-off ⇒ no behaviour change for existing users.
+- **Effectiveness:** high; the conceptual split is the real contribution. The 68% figure is
+  internally consistent (15,069 document + 5,573 code + 1,489 rationale + 88 concept = 22,219
+  exactly) and names its corpus (`bootstrap-terraform`), but is not reproducible off that repo.
+- **Robustness: more defensive than first credited.** Validated by execution 2026-08-20 —
+  every malformed input **fails loudly**, none silently no-ops: empty / whitespace / separator-only
+  → usage error exit 1; unknown type → `Unknown file_type(s)` exit 1; wrong case (`Document`) →
+  rejected, not silently non-matching; duplicates dedupe correctly. The router validates against
+  `KNOWN_FILE_TYPES = ['code','document','rationale','concept']` **before** calling the filter.
+  The edges-vs-links key hazard its own comment names is genuinely closed — tested with a `links`
+  fixture, it detected the key, dropped the node and both touching edges.
+- ⚠ **"Purely additive / default-off" is true only for UNBUDGETED queries.** Measured: with no
+  flag and no budget, patched output is byte-identical to pristine. With `--budget 200` and no
+  flag, they differ (pristine 4 nodes/0 edges, patched 3/1). The filter never ran — that
+  divergence is **4.3b's invariant removal**, not this flag. Do not state the additive claim
+  without that carve-out.
+- ⚠ **The `.graphifyignore` rationale is unsourced.** The patch comment argues upstream "only
+  offers `.graphifyignore`, which deletes facts". That string appears **only inside the patch
+  itself** — nowhere in 1.11.0 source, compiled output, docs, or git history, and no
+  `.graphifyignore` file exists anywhere on this machine. It may refer to the separate external
+  `graphify` tool rather than gsd-core. **Get a citation before shipping this rationale upstream.**
 - **Upstream viability: strong.** Additive, defaults preserved, clear rationale.
 - **Docs bonus:** both call-site files teach the matching model — *"Choose the term the
   graph knows, not the concept. Matching is literal, case-insensitive substring — no
