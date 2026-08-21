@@ -135,13 +135,21 @@ Ordered by recommended sequence. Each is independent unless noted.
 
 ### 4.2 — context7: `resolve-library-id` requires `query` as well as `libraryName`
 
-- **Files:** `agents/gsd-advisor-researcher.md`, `agents/gsd-executor.md`,
-  `gsd-core/workflows/discovery-phase.md`, `gsd-core/references/research-documentation-lookup.md`
+- **Files (3, not 4):** `agents/gsd-advisor-researcher.md`, `agents/gsd-executor.md`,
+  `gsd-core/references/research-documentation-lookup.md`
+- ⚠ **`gsd-core/workflows/discovery-phase.md` DOES NOT EXIST at 1.11.0.** Deleted upstream in
+  `c5b83cb0` — *"delete two unreachable workflows"* (#3560/#3564), confirmed an ancestor of
+  `v1.11.0`. It was dead code: nothing referenced it. The patch predates the deletion (patch
+  authored Aug 12, deleted Aug 15). There is **no successor file** — `git log --follow` finds
+  no rename. Drop it from scope; do not hunt for somewhere to re-anchor its hunk.
 - **What it does:** upstream documents the call as taking `libraryName` only. The patch
   corrects it to **both required**, and expands the "context7 genuinely unavailable"
   fallback conditions (user scope lives in `~/.claude.json`, etc.).
 - **Effectiveness:** high — a wrong call signature fails every documentation lookup.
-- **Robustness:** doc-only, no build, no runtime risk.
+- **Robustness:** doc-only, no build, no runtime risk. Verified: 3 stale `libraryName`-only
+  sites remain at 1.11.0 and the patch covers all of them — a repo-wide grep finds no others.
+- **Verified against the live tool schema**, not docs: `resolve-library-id`'s `required` array
+  is `["query", "libraryName"]`. Both genuinely required.
 - **Upstream viability: strong.** Factual API correction, verifiable against the context7
   tool schema.
 - ⚠ **Open question, now with evidence.** `gsd-executor.md` *drops*
@@ -154,6 +162,12 @@ Ordered by recommended sequence. Each is independent unless noted.
   the frontmatter `tools:` allowlist at `~/.claude/agents/gsd-executor.md:4` still grants it.
   So the effect is a detection gap (the model may not think to look under that name), not a
   permissions gap. Decide deliberately; do not port it as if it were part of the API fix.
+  **Settled 2026-08-20:** the plugin is *installed but disabled* here
+  (`~/.claude/settings.json:251` → `"context7@claude-plugins-official": false`, with 1,574
+  historical uses recorded) — real config currently switched off, not cruft. The live tools in
+  use come from a separate user-scope HTTP entry at `~/.claude.json:4431`. And nothing in CI
+  constrains it: `tests/context7-tool-name-parity.test.cjs` never references the plugin-scoped
+  name. Porting the prose removal is safe; it is a judgement call, not a correctness fix.
 
 ### 4.3 — graphify seed-floor: score seeds by match quality
 
@@ -310,7 +324,7 @@ split over three sections. Full map of all 19:
 | `gsd-core/references/planner-load-graph-context.md` | 4.5 (call site + docs) | no |
 | `gsd-core/references/research-documentation-lookup.md` | 4.2 | no |
 | `gsd-core/references/checkpoints.md` | 4.9 glab | no |
-| `gsd-core/workflows/discovery-phase.md` | 4.2 | no |
+| ~~`gsd-core/workflows/discovery-phase.md`~~ | **4.2 — DROP** | file deleted upstream (`c5b83cb0`) |
 | `gsd-core/workflows/plan-review-convergence.md` | 4.8 convergence | no |
 | `gsd-core/workflows/ship.md` · `inbox.md` · `pr-branch.md` | 4.9 glab | no |
 | `skills/gsd-plan-review-convergence/SKILL.md` | 4.8 convergence | no |
@@ -370,6 +384,9 @@ Add a changeset only if the branch is being promoted to a contribution branch of
   the next `make build` and never reaches source.
 - **Never edit `.claude/agents/`** — install-sync output. Edit `agents/`.
 - The installed `~/.claude` tree is 1.10.0. Patches were authored there; **line numbers will
-  have drifted at 1.11.0.** Re-anchor by content, not by line.
+  have drifted at 1.11.0.** Re-anchor by content, not by line — but first check the file still
+  exists. At least one patch target (`gsd-core/workflows/discovery-phase.md`) was **deleted**
+  upstream between 1.10.0 and 1.11.0; "re-anchor by content" would send you hunting for a home
+  that no longer exists. Confirm `git ls-files <path>` before porting any hunk.
 - Every patch is currently *only* in `~/.claude/scripts/gsd-local-patches-1.10.0.diff`. Until
   a branch exists, `/gsd-update` (which installs upstream via npx) destroys it.
