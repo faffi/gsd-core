@@ -64,6 +64,16 @@ strongest-founded of the ten.**
   only non-conforming line in a block whose three neighbours all use the safe form. It would
   apply cleanly and no test would catch it.
 
+## ⛔ BLOCKED 2026-08-21 — the surrounding idiom is dead under zsh
+
+Do not port this until the guard bug is fixed. Writing the line in the block's current idiom
+and then TESTING it showed the idiom itself never fires under zsh (arrays are 1-indexed, so
+`${_X[0]}` is always empty). A 4th guard in the same form would be provably dead code.
+
+Blocking todo: `.planning/todos/pending/2026-08-21-zsh-array-index-guards-silently-read-nothing.md`
+
+Once that lands, port this line in whatever form that fix establishes — not the form below.
+
 ## Solution — REWRITTEN 2026-08-21, do not use the raw patch hunk
 
 Match the 1.11.0 idiom, not the 1.10.0 one:
