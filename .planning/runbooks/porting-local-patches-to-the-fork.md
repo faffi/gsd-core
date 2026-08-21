@@ -206,27 +206,42 @@ Ordered by recommended sequence. Each is independent unless noted.
 - **Upstream viability: strong**, given the measurement. Needs a reproducible benchmark
   rather than a one-off number.
 
-### 4.3b — graphify: the seed-floor invariant is REMOVED ⚠ largest undescribed change
+### 4.3b — graphify: the seed-floor invariant is REMOVED ⚠ highest risk, and CI is blind to it
 
-- **Files:** `src/graphify.cts` (the `applyBudget` rewrite, inside the same ~315-line block)
-- **Surfaced by validation 2026-08-20.** 4.3 and 4.4 describe scoring and hop-tracking as
-  conservative/additive. The same hunk also **replaces the whole-tier confidence-deletion
-  algorithm with a continuous per-edge ranker** (confidence → relation → hop → weight →
-  lexical, binary search over prefix length, two-pass seed-floor optimisation whose comment
-  records two prior failed attempts).
-- **The patch says so itself, verbatim:** *"upstream's 'seeds are an inviolable floor'
-  invariant is REMOVED by this patch — PASS 1 pins the floor to a single seed and PASS 2
-  grows it only as far as the budget allows. So `total_nodes` may be far below the seed
-  count, and a reader must NOT assume `total_nodes >= seeds matched`."*
-- **This is unconditional.** It fires for **any** budgeted graphify query, not only when
-  `--exclude-file-types` is passed. Output shape changes for every existing budgeted caller.
-- **Robustness: the highest-risk item in the set**, and the one whose framing was most wrong
-  in the first draft. It is not additive and it breaks a documented invariant.
-- **Upstream viability: needs its own PR and its own argument.** Removing an invariant is a
-  breaking change to a contract; it wants the benchmark from 4.3 plus an explicit note that
-  `total_nodes >= seeds` no longer holds.
-- **Action:** port 4.3/4.4/4.3b together — they are one hunk — but write them up as three
-  commits, and do not describe the result as additive.
+- **Files:** `src/graphify.cts` (the `applyBudget` rewrite, same ~315-line block)
+- **Validated 2026-08-20 by execution.** Measured on the real corpus, `--budget` only, no
+  `--exclude-file-types` anywhere:
+
+  ```
+  PRISTINE  budget=2000  seeds=727  total_nodes=727  total_edges=0  budget_met=false  est=102710
+  PATCHED   budget=2000  seeds=727  total_nodes=11   total_edges=9  budget_met=true   est=1954
+  ```
+  Above the cliff (budget > full payload) the two are **byte-identical** — the change fires only
+  under budget pressure.
+- **Invariant break PROVEN**, with a counterexample that is worse than "fewer nodes": on a 3-node
+  fixture, seed `n0` survives at budget 120 but is **evicted at budget 150** — a *larger* budget
+  yielding a *smaller* result for that node. `total_nodes < seeds` reproduced on both synthetic
+  and real corpora (`auth`: 727 seeds → 3 nodes at budget 500).
+- ⚠⚠ **The existing regression net does not cover this — and will pass anyway.**
+  `tests/graphify-query.test.cjs:560` (*"the seed set is a floor the reduction never goes below"*)
+  and `:587` (*"a larger budget never yields a smaller payload"*) encode exactly the invariant
+  being removed. But their `arbGraph` fixture (`:513-538`) only produces a second seed if
+  fast-check happens to generate the substring `auth`. Measured against the repo's pinned config
+  (`numRuns: 200, seed: 42`, deterministic): **0 of 200 runs produced ≥2 seeds.** With one seed,
+  `setFloor(Math.min(1, rankedSeeds.length))` pins the floor at the whole seed set and the
+  invariant coincidentally holds.
+  **So porting 4.3b passes the suite while silently breaking the contract those tests exist to
+  protect.** Do not treat a green run as evidence. The port must add a **new RED test with a
+  deliberately multi-seed, differentiated-match-quality fixture** (the budget-120/150 counterexample
+  is a ready template), and must not quietly edit `:560`/`:587` without stating why.
+- **The two prior failed attempts are real** and transcribed in the comment (rev 1: floor shrunk
+  only at `lo===0` → non-nested feasible sets; rev 2: floor capped at 60% of budget → bigger budget,
+  fewer edges). The current approach held across 4 terms × 7 budgets with no regression — but that
+  is a **coarse 7-point sweep**; the author's own documented off-by-one dip (`argocd`, budget 22750,
+  found at 357-step granularity) was **not** re-derived. Unverified, not doubted.
+- **Degenerate inputs are all handled** — zero seeds, budget 0, empty graph, all-equal scores
+  (deterministic id-lexicographic tiebreak), negative budget: no exceptions, no NaN, and
+  `budget_met: false` correctly reported when even the one-seed floor overshoots.
 
 ### 4.4 — graphify budget-cliff: per-edge hop distance
 
@@ -236,10 +251,22 @@ Ordered by recommended sequence. Each is independent unless noted.
   `buildQueryResponse` passes edge objects through verbatim and a field would serialize
   into the response. `WeakMap` over `Map` so edges are collectable when the query drops them.
 - **Effectiveness:** high — this is the mechanism that makes graded trimming possible.
-- **Robustness: the best-reasoned patch in the set.** It anticipates two failure modes
-  (serialization leak, retention leak) and states why each choice avoids them.
-- **Upstream viability: strong**, but it is coupled to 4.3 — sequence them together even
-  as separate commits.
+- ⚠ **Robustness: one of its two stated rationales does not apply here.** The serialization
+  concern is real — but satisfied by *any* external table, not specifically by `WeakMap`
+  (`WeakMap.set` never mutates the key; so would a `Map`). The **retention** rationale is
+  structurally void: `graph`/`scoped` stays live for the whole synchronous body of `graphifyQuery`,
+  and `hopOf`'s keys are the same edge objects held in `graph.edges`, so every edge is strongly
+  reachable until the call frame is discarded — at which point `Map` and `WeakMap` become
+  collectable simultaneously. graphify runs as a one-shot CLI subprocess per query, so the leak it
+  guards against cannot occur. Downgrade from "best-reasoned in the set"; the choice is harmless,
+  the justification is half moot.
+- **Upstream viability: strong**, and splittability is confirmed: 4.3 and 4.4 are **inert alone**
+  because 4.3b's consumers use optional chaining (`seedScoreOf?.get(b) ?? 1`,
+  `(hopOf && hopOf.get(e)) ?? 0`). Both are still independently TDD-testable — `seedAndExpand` is
+  exported and returns the maps directly. 4.3b is the sole behaviour-changing commit.
+- ⚠ **Translation detail missing from §2:** the `.cjs` patch just adds keys to an object literal;
+  the `.cts` port must also extend the `ExpandResult` interface (`src/graphify.cts:280-285`) with
+  `hopOf: WeakMap<GraphEdge, number>` and `seedScoreOf: WeakMap<GraphNode, number>`.
 
 ### 4.5 — graphify `--exclude-file-types`
 
