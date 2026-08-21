@@ -467,10 +467,29 @@ dependency — but **neither half is self-contained at the file list first given
   introduce a scoping bug its neighbours do not already have.
 - **Inert by default:** `mempalace.enabled` defaults `false`, so out of the box the step never
   fires and the glob never matches. Contribution is real but scoped to projects that opt in.
-- ⚠ **zsh caveat (minor, inherited).** Under zsh's default `NOMATCH`, a non-matching glob makes
-  the *shell* abort and print `no matches found:` **before `cat` runs**, so `2>/dev/null` does not
-  suppress it. Verified by direct execution. Does not fire in practice — Claude Code's Bash tool
-  runs fences via `bash -c` — and all three sibling lines share it. Not introduced here.
+- ⚠⚠ **CORRECTED 2026-08-21 — THE HUNK IS STALE. Do not apply it verbatim.** This bullet
+  previously called the zsh `NOMATCH` caveat "inherited — all three sibling lines share it."
+  **False as of 1.11.0.** Upstream rewrote the whole fence; `agents/gsd-planner.md:696-703` is now
+  array-glob + existence check on every sibling:
+  ```bash
+  _CTX=( "$phase_dir"/*-CONTEXT.md )
+  if [ -e "${_CTX[0]}" ]; then cat "${_CTX[@]}"; fi
+  ```
+  i.e. upstream FIXED the hazard the patch's `cat glob 2>/dev/null` form carries (under zsh the
+  shell aborts with `no matches found:` before `cat` runs, so `2>/dev/null` cannot suppress it).
+  Porting the hunk as written reintroduces the bug upstream just removed and leaves the only
+  non-conforming line in the block. It applies cleanly; no test catches it. Port instead as:
+  ```bash
+  _RECALL=( "$phase_dir"/*MEMORY-RECALL.md )
+  if [ -e "${_RECALL[0]}" ]; then cat "${_RECALL[@]}"; fi  # From mempalace-recall (plan:pre)
+  ```
+  The glob has **no leading dash** — the producer writes `MEMORY-RECALL.md`, unlike the three
+  siblings. Correct, but it reads as a typo; keep the comment.
+
+  **Third moved anchor in this campaign** — after `discovery-phase.md` deleted outright (§4.2)
+  and `src/graphify.cts` missing from §4.5's file list. The failure mode is not line drift, which
+  §7's "re-anchor by content" handles; it is that surrounding code was *improved* while the patch
+  sat unported, so the patch now encodes an older, worse idiom.
 - **Upstream viability: strong.** One line, guarded, completes an existing capability's wiring.
   **"Producer with no consumer" is confirmed:** a repo-wide `MEMORY-RECALL` grep at 1.11.0 finds
   only the capability declaration, the producing skill, generated registry output and docs —
@@ -581,6 +600,16 @@ npm run lint:ci
 Add a changeset only if the branch is being promoted to a contribution branch off `next`.
 
 ## 7. Standing caveats
+
+- ⚠ **A patch can apply cleanly and still be wrong: the anchor may have been IMPROVED.**
+  Three of ten concerns have hit this — §4.2 (`discovery-phase.md` deleted outright), §4.5
+  (`src/graphify.cts` missing from the file list), §4.10 (the planner fence rewritten from
+  `cat glob 2>/dev/null` to array-glob + existence check, fixing the exact zsh hazard the patch
+  still carries). This is NOT line drift, which "re-anchor by content" below handles. It is that
+  upstream changed the surrounding code while the patch sat unported, so the hunk now encodes an
+  older, worse idiom — and `git apply` is happy, and no test fails.
+  **Before porting any hunk: read the CURRENT surrounding block in full and match its idiom, not
+  the diff's context lines.** The diff's context shows 1.10.0, which is what you are replacing.
 
 - **Never edit `gsd-core/bin/lib/*.cjs`** — gitignored build output; the edit vanishes on
   the next `make build` and never reaches source.
