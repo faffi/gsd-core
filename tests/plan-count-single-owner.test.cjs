@@ -183,6 +183,30 @@ const SCENARIOS = [
     },
   },
   {
+    // #3183 follow-up: `<phase>-PLAN-CHECK.md` is a plan-check REPORT, not an
+    // executable plan, and is the same class of derivative artifact as
+    // `-PLAN-REVIEW.md` (row11) and `-OUTLINE.md` (row9). Without an anchored
+    // exclusion it falls through isRootPlanFile's deliberately-loose /PLAN/i
+    // fallback and inflates planCount, so a phase with N real plans and N
+    // summaries reads N+1/N and `completed` is false forever. Observed in
+    // production: a real "Phase 05 Plan Check" beside 6 PLAN/SUMMARY pairs made
+    // that phase unable to register as done. This row therefore pins `completed`
+    // as well as the count — the count is the mechanism, `completed` is the bug.
+    id: 'row11b',
+    label: '-PLAN-CHECK.md present -> NOT counted, phase still completes',
+    build(dir) {
+      writeFile(dir, '01-PLAN.md', planBody());
+      writeFile(dir, '01-SUMMARY.md', summaryBody());
+      writeFile(dir, '01-PLAN-CHECK.md', planBody());
+    },
+    check(scan) {
+      assert.strictEqual(scan.planCount, 1);
+      assert.strictEqual(scan.summaryCount, 1);
+      assert.strictEqual(scan.completed, true);
+      assert.ok(!scan.planFiles.includes('01-PLAN-CHECK.md'));
+    },
+  },
+  {
     id: 'row12',
     label: 'stray summary with no matching plan -> summaryCount excludes it',
     build(dir) {
