@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+if [ "$1 $2" = "auth status" ]; then exit 0; fi   # simulate: glab IS authenticated (this is a GitLab remote)
+if [ "$1 $2" = "mr create" ]; then echo "STUB: glab mr create was invoked (args: $*)"; exit 0; fi
+echo "STUB glab: unhandled args: $*"; exit 0
