@@ -7,7 +7,9 @@ files:
   - gsd-core/workflows/plan-review-convergence.md:31 (the ONE runtime-authoritative max-cycles site)
   - gsd-core/workflows/plan-review-convergence.md:453,462 (stale success-criteria checklist — REQUIRED edit)
   - skills/gsd-plan-review-convergence/SKILL.md (routing half)
-  - skills/gsd-review-concurrent/SKILL.md (MUST come onto the same branch — Skill tool hard-errors on unknown names)
+  - skills/gsd-review-concurrent/SKILL.md (⚠ DOES NOT EXIST IN THIS REPO — local-only, 217 lines; must be IMPORTED, and make install destroys it today)
+  - .planning/runbooks/local-only-artifacts/skills--gsd-review-concurrent--SKILL.md (the rescued copy)
+  - .planning/todos/pending/2026-08-20-local-only-skills-and-agent-destroyed-by-make-install.md (BLOCKS the routing half)
   - tests/plan-review-convergence.test.cjs:517-520 (passes for the wrong reason — REQUIRED edit)
   - .planning/runbooks/porting-local-patches-to-the-fork.md (§4.8 — full analysis)
 ---
@@ -39,7 +41,9 @@ SELF-CONTAINED at the file list first given.**
   CYCLE_SUMMARY absent" contract catches it) **or** the review subagent improvises, falls back to
   `gsd-review` or hand-rolls a review, and still emits a well-formed `CYCLE_SUMMARY` — the loop
   then reports counts as if the intended review ran. **The silent branch could not be ruled out.**
-  Bring `skills/gsd-review-concurrent/SKILL.md` onto the same branch; it is self-contained.
+  Bring `skills/gsd-review-concurrent/SKILL.md` onto the same branch — ⚠ **corrected 2026-08-20:
+  that skill is NOT in this repo at all** (local-only, and `make install` destroys it). The routing
+  half is BLOCKED until the local-only-artifacts todo lands.
 - **`gsd-review-concurrent` IS genuinely parallel-safe**, not invoke-and-hope. Verified in 1.11.0:
   `review-lane-invocation.cjs:161-166` keys every write on slug (`gsd-review-${slug}.md` / `.err`).
   The one shared path, `gsd-review-prompt.md`, is written once by `build_prompt` (`review.md:242`)

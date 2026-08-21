@@ -23,7 +23,8 @@ files:
   - gsd-core/workflows/resume-project.md:109
   - gsd-core/workflows/resume-project.md:112
   - templates/continue-here.md:77
-  - gsd-core/bin/lib/commands.cjs:1030
+  - src/commands.cts (TRACKED SOURCE — edit here; the #3587 three-tier policy)
+  - gsd-core/bin/lib/commands.cjs:1030 (gitignored BUILD OUTPUT — line ref only, never edit)
   - .planning/research/2026-08-19-pause-work-phase-glob-upstream-report.md (evidence, in-repo)
   - .planning/research/2026-08-20-pause-work-missing-directives-and-template-defects.md (related: template defects in the same workflow)
 ---
