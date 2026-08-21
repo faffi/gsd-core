@@ -293,25 +293,50 @@ Ordered by recommended sequence. Each is independent unless noted.
 - **Upstream viability: moderate.** Depends on whether upstream wants to track a Claude
   Code-specific env var; it is host-specific in a multi-host project.
 
-### 4.7 — review-lane timeouts 540s → 1800s
+### 4.7 — review-lane timeouts 540s → 1800s ⚠ MOSTLY INERT AS SPECIFIED
 
-- **Files:** `capabilities/antigravity/capability.json` (`:121`) → regenerate registry;
-  `src/review-lane-descriptor.cts`
-- ⚠ **Corrected 2026-08-20:** an earlier draft named `capabilities/{gemini,cursor}/capability.json`.
-  Both contain **zero** `540s`/`--print-timeout` hits — gemini's only timeout key is an
-  unrelated `timeoutFloorMs: 900000`. The patched values sit under `"slug": "antigravity"`.
-  Editing gemini/cursor would change the wrong lane.
-- **What it does:** native `--print-timeout` 540s→1800s and external cap 600000ms→1920000ms.
-  Both layers move together, preserving outer-cap > inner-timeout.
-- **Effectiveness:** unknown — **this is the weakest patch in the set.**
-- **Robustness:** the two-level relationship is correctly maintained. But it is the **only
-  patch whose comment states what changed without stating what failed.** Every other patch
-  names a wrong outcome; this one names a number.
-- **Upstream viability: weak as-is.** Needs "review lane X timed out at 540s on workload Y"
-  to be arguable. Without that it reads as local tuning, which is a fine reason to keep it
-  local and a poor reason to ask upstream to change a default.
-- **Action:** before porting, decide whether you can reconstruct what timed out. If not,
-  port it local-only and label it tuning.
+**Validated 2026-08-20 by execution. The earlier file list, ported exactly, changes nothing.**
+
+- **The `capability.json` half is provably dead for dispatch.** `antigravity` is already a
+  **first-party** lane in `REVIEWER_LANES` (`src/review-lane-descriptor.cts`), and the merge
+  loop does `if (bySlug.has(slug)) continue;` (`:654`, D8) — documented at `:608-610`:
+  *"an overlay declaring a slug that already names a first-party lane is silently superseded…
+  never overwritten."* Demonstrated: mutating the registry's `antigravity.reviewer` to
+  `1800s`/`1920000` and re-running `mergeReviewerLanes` still yields `600000` / `540s`, and the
+  merged object is `===` the untouched first-party entry. The registry block is read only by
+  the validator and roster derivation — never for the invoke timeout.
+- **The one file with runtime effect** is `src/review-lane-descriptor.cts:422-434` (comment +
+  `invoke.args` + `timeoutFloorMs`) → compiled lib → `resolveLanePlan`
+  (`src/review-lane-invocation.cts:365-367`) → `cp.spawnSync(..., { timeout })` at
+  `gsd-tools.cjs:1446`.
+- ⚠ **There is a THIRD timeout layer the patch never touches.**
+  `gsd-core/workflows/review.md:295-300` tells the calling agent to wrap the whole
+  `invoke_reviewers` loop in a Bash-tool `timeout:` of *"at least 900000, and 1200000 when Codex
+  or headless Claude are in the selection."* That is hand-written prose — nothing generates or
+  lints it against the data (`grep -rln timeoutFloorMs scripts/` is empty). Raising antigravity's
+  floor to **1,920,000ms makes it the largest of any lane**, above Codex's 1,200,000. An operator
+  following the unmodified guidance under-provisions the outer wrapper and the host kills the
+  whole loop before the new inner budget is ever reached. **`review.md` is a required companion
+  edit.**
+- **Registry regeneration is deterministic** — regenerated on a clean tree, byte-identical to the
+  committed file. Note this **refutes** `~/.claude/runbooks/gsd-update-runbook.md:404` ("the
+  registry is generated from the descriptor"): it is generated from `capabilities/<id>/capability.json`
+  only, and `review-lane-descriptor` has no generation relationship to it.
+- **Buffer, not ratio:** 600s−540s = 60s becomes 1920s−1800s = 120s. Outer>inner holds, but
+  **nothing enforces it** — no validator or test compares the `--print-timeout` string against
+  `timeoutFloorMs`. Land one without the other and you get a silent SIGKILL surfacing as an
+  unexplained empty stub, the exact failure `review.md:302-306` warns about.
+- **Four test files assert the literals** and will break: `tests/antigravity-reviewer.test.cjs:126-152`,
+  `tests/review-lane-invocation.test.cjs:88`, `tests/review-lane-descriptor.test.cjs:775,954`.
+- **Justification: still none.** Exhaustive search found one artifact —
+  `~/.claude/runbooks/gsd-update-runbook.md:399-412`, item 12 — which dates the edit (2026-08-14)
+  and describes the mechanics, and notes the patch *"sat in no diff and no runbook entry"* until a
+  drift check caught 13 modified against a patch set of 11. It records **no workload, no observed
+  timeout, no failure**. "Names a number, not a failure" is confirmed.
+- **Revised action:** (a) drop `capabilities/antigravity/capability.json` from the required-for-effect
+  list — keep it only for validator/doc consistency; (b) add `gsd-core/workflows/review.md`'s
+  guidance as a required companion edit; (c) update the four test files; (d) **local-only** — with
+  no failure story there is no upstream case for changing a default.
 
 ### 4.8 — convergence: `max-cycles` 3→5, and route to `gsd-review-concurrent`
 
