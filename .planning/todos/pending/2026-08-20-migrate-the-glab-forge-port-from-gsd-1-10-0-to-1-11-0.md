@@ -79,7 +79,7 @@ them (`patch -p1 --dry-run --forward`):
 |---|---|
 | `references/checkpoints.md` | **clean** |
 | `workflows/inbox.md` | **clean** (all 6 hunks) |
-| `workflows/pr-branch.md` | **clean** |
+| `workflows/pr-branch.md` | applies, but **with fuzz 2** — hand-verify, do not trust a fuzzy apply |
 | `workflows/ship.md` | 3 of 4 hunks apply; **1 fails** |
 
 `ship.md` detail:
@@ -197,6 +197,33 @@ Cleared (no forge coupling found):
   hardcoded gate. Capability *sources* are a different subsystem from forge operations.
 - Remaining `github.com` hits across `gsd-core/` and `src/` are doc-comment citations
   and links to other projects (cline, hermes, thinking-partner, claude-code). Not coupling.
+
+> **Validated 2026-08-20 — inertness MEASURED, not just reasoned.** A stubbed re-execution of the
+> verbatim fences (`glab auth status` exit 0, `gh auth status` exit 1 — a GitLab-only remote)
+> confirmed `create_pr` still dispatches to **`gh`**: `STUB: gh pr create was invoked`, with
+> `$FORGE` empty at guard time.
+>
+> Stronger than the fence argument: **all 4 `ship.md` guards sit in a different `<step>` than the
+> derivation**, not merely a different fence — steps are GSD's atomic execution unit. Same for 7 of
+> 8 `inbox.md` guards; only `inbox.md:53` shares a step. Corroborated in-tree by
+> `execute-phase.md:544` (*"a bare cd does not persist across separate tool invocations"*). No
+> ambient collision: `FORGE` is unset in env, all shell rc files and `settings.json`, and no
+> `CLAUDE_ENV_FILE`/`BASH_ENV` mechanism exists in the hooks.
+>
+> **Calibration on "every time":** proven is the mechanism and the consequence under verbatim
+> re-execution. Workflows are executed by a model, not an interpreter, and the derivation fence
+> echoes `forge=gitlab` into that model's context — so a model *could* inline the literal at a
+> guard, most plausibly at `inbox.md:53`. The defect is therefore model-dependent and fail-open,
+> not a certainty. Same root cause, same fix; phrase it as "under the shell-state model GSD's own
+> docs describe" rather than an unconditional universal.
+>
+> **Fix refined:** prefer a `gsd_run query forge.detect`-shaped re-derivation per guard-bearing
+> fence, matching how every other cross-fence value already works
+> (`BASE_BRANCH=$(gsd_run query git.base-branch)`, `:46`, is the direct analogue). **Argue against
+> caching in `.planning/config.json`** — the derivation is deliberately probe-authoritative (its own
+> comment: *do NOT infer the forge from the hostname*) because remote/auth state changes between
+> runs, and a durable settings file reintroduces that staleness. Keep fail-closed as an independent
+> second layer regardless.
 
 ### Finding 3 — `$FORGE` never reaches its guards: the installed port is inert on GitLab
 
