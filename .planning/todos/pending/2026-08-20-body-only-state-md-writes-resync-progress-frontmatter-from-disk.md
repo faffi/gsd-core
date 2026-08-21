@@ -135,69 +135,50 @@ whenever a *Quick Tasks Completed* table exists. So following `/gsd-fast` as wri
 corrupts any STATE.md whose curated progress disagrees with a disk scan — a workflow that
 reads as append-only.
 
-## Second, INDEPENDENT defect in the same write path — backslash-escape doubling
+## Second defect in the same write path — ALREADY FIXED UPSTREAM in 1.11.0
 
-The original report described "em-dashes came back double-encoded". **The reporter
-withdrew that on measurement** — mojibake count was 0 before and 0 after, and literal
-U+2014 went 1003 -> 1006, the +3 being the appended row's own text. No em-dash is
-transformed. `platformReadSync`/`normalizeContent` are exonerated; do not re-derive the
-encoding theory from the original wording.
+**Resolved; recorded so the investigation is not repeated.** A downstream 1.10.0 session
+measured `\\uXXXX` escapes in STATE.md's `stopped_at` doubling their backslash run on
+every write — 1, 2, 4, 8 across three appends, exponential and unbounded. Their earlier
+"em-dash double-encoding" framing was withdrawn on measurement (mojibake 0 before and
+after); no em-dash is transformed.
 
-What actually happens: existing `\uXXXX` escapes inside `stopped_at` (a ~12.9 KB
-double-quoted scalar holding 19 of them) have their **backslash run doubled on every
-write** — 1, 2, 4, 8 after three appends. Line 8 grew 12,883 -> 13,016 bytes; the first
-write added exactly 19 bytes for 19 escapes, which pinned the mechanism.
+**Fixed by `507db384` (2026-08-14), first tagged v1.11.0~63:**
 
-**The asymmetry is in `src/frontmatter.cts` and is provable from source:**
+> `fix(#3497): unescape double-quoted scalars on parse so round-trips stop doubling backslashes (#3521)`
 
-- **Write** — `escapeDoubleQuoted:349-357` escapes *every* backslash unconditionally
-  (`.replace(/\\/g, '\\\\')`).
-- **Read** — `unescapeDoubleQuoted:122-152` recognizes only `\\`, `\"`, `\n`, `\t`,
-  `\r`, `\xHH`. Anything else hits `:148-149` — `out += '\\' + next; // unrecognized
-  escape — keep literally`. **`\u` is not in the recognized set.**
+| | v1.10.0 | v1.11.0 |
+|---|---|---|
+| `escapeDoubleQuoted` (write) | present | present |
+| `unescapeDoubleQuoted` (read) | **absent** | present |
+| `parseQuotedScalar` (read) | **absent** | present |
 
-So `\u2014` survives the read as six literal characters and the write re-escapes its
-backslash.
+1.10.0 had a write side and **no read side at all** — which is why every backslash
+doubled, including `\n` and `\t`. Not a branch failing to run; the function did not
+exist. Verified on 1.11.0: `"\\\\u2014"` → `"\\u2014"`, `"\\n"` → newline,
+`"\\d+"` → unchanged.
 
-Note the writer emits `\xHH` for controls and **never emits `\uXXXX` in any branch** —
-so GSD's own frontmatter writer did not create those escapes. Something else wrote them,
-and whatever it was is still running.
+**Migration behaviour, measured on 1.11.0:** an already-corrupted 4-backslash value stays
+at 4 across three round-trips. Upgrading is a fixed point — growth stops immediately, the
+migration write does not double once more, and it does **not** self-heal. Existing
+inflated runs freeze at whatever length they reached; repairing them is a separate,
+scoped one-time cleanup.
 
-### `resync: false` does NOT suppress it
+**Consequence for THIS todo:** the earlier "land both or neither" conclusion is void. The
+unbounded defect closes by upgrading. The resync defect above is **still live at 1.11.0**
+— `src/state.cts:3407` and `gsd-tools.cjs:1172` re-verified in the 1.11.0 tree, and the
+full sweep table still applies. Upgrading does nothing for it.
 
-Answered from source, and it changes the fix plan. `src/state.cts:3159-3160`:
+### The methodological error, recorded because it recurred
 
-> *"`syncStateFrontmatter` re-derives frontmatter status/stopped_at from the body on
-> every write"*
+Twice in this exchange I read 1.11.0 source and described it to a peer on 1.10.0 — first
+`audit-open`'s `acknowledged` block, then `unescapeDoubleQuoted`'s line numbers, neither
+of which exists in their build. In the second case I quoted a function at them as proof of
+a mechanism, and they refuted it by measurement because the function was not there.
 
-`:3156`'s `preFm` snapshot — the thing `resync: false` restores — is scoped to the
-**progress block**. `stopped_at` is protected by a separate #1230 preserve-when-unchanged
-delta (`preBodyStoppedAt`, `:3177`) that is not gated on `resync`. The two snapshots are
-deliberately independent (`:3164-3165`).
-
-**Consequence: the one-line `{ resync: false }` fix closes the `completed_phases` bug and
-leaves the escape doubling live.** Land both or neither.
-
-### Open — possibly a THIRD defect
-
-The 2ⁿ growth does not follow from the asymmetry alone. `\\` **is** recognized on read
-(`:131-132`), so a round-trip of `\\u2014` should unescape and re-escape to itself —
-stable at 2, not doubling. Exponential growth implies the value never reaches the unescape
-branch. `parseQuotedScalar:163` only unescapes when the scalar both starts and ends with
-`"`; otherwise it strips quotes **without unescaping**. A 12.9 KB scalar is a plausible
-candidate for failing that delimiter test.
-
-If confirmed, that is a third distinct defect — a long or unusual scalar silently skipping
-unescape while still being escaped on write. Test posed to the reporter: does the parsed
-value pass `startsWith('"') && endsWith('"')`?
-
-### Why both defects evaded detection
-
-`grep -c '—'` returns 19 before and 19 after, because `\\u2014` still *contains*
-`\u2014`. A count-based probe is structurally blind to the corruption it is measuring.
-It surfaced only via byte-length delta and a `cmp` char offset. Same shape as
-`counts.todos` reporting a display cap: a measurement that looks like verification and
-is not.
+Running a command on their version and confirming it works is **not** verifying that the
+payload or the code path I am describing exists there. Any claim citing `src/*.cts` needs
+a `git show <their-tag>:` check before it goes to someone on another version.
 
 ## Provenance
 
