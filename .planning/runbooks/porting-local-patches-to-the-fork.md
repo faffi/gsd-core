@@ -340,19 +340,45 @@ Ordered by recommended sequence. Each is independent unless noted.
 
 ### 4.8 — convergence: `max-cycles` 3→5, and route to `gsd-review-concurrent`
 
-- **Files:** `skills/gsd-plan-review-convergence/SKILL.md`,
-  `gsd-core/workflows/plan-review-convergence.md`
-- **What it does:** two unrelated things in one patch — raises the replan cycle default,
-  and swaps the sequential reviewer for your personal `gsd-review-concurrent` skill.
-- **Effectiveness:** the concurrent routing is a real throughput win; the default bump is
-  preference.
-- **Robustness:** the routing hard-depends on `skills/gsd-review-concurrent`, which is a
-  **personal skill not present upstream**. Porting the workflow change without the skill
-  produces a dangling reference.
-- **Upstream viability: none as bundled.** Split it: the `max-cycles` default could be
-  argued separately; the routing cannot go upstream at all until the skill does.
-- **Action:** split into two, keep the routing local, and bring the skill onto the same
-  branch so the reference resolves.
+**Validated 2026-08-20.** Splittable as claimed — 4 hunks, no line overlap, no content
+dependency — but **neither half is self-contained at the file list first given.**
+
+- **`max-cycles` has exactly ONE runtime-authoritative site:** `plan-review-convergence.md:31`
+  (`if [ -z "$MAX_CYCLES" ]; then MAX_CYCLES=3; fi`). SKILL.md, the `commands/gsd/` twin, and
+  every `docs/` mention are text with no runtime effect.
+- ⚠ **Its test passes for the wrong reason.** `tests/plan-review-convergence.test.cjs:517-520`
+  asserts `workflow.includes('MAX_CYCLES') && workflow.includes('3')`. After the bump `'3'` still
+  matches unrelated text (`#2315`, `## 3. Validate Phase`), so the test stays green while its own
+  message — *"parses --max-cycles with default of 3"* — becomes false. Touch it or the suite lies.
+- ⚠ **The routing half leaves the file self-contradicting.** The patch changes the executable
+  prompt to `gsd-review-concurrent` but never touches the file's own success-criteria checklist at
+  `:453,462`, which still says `Skill("gsd-review")`. The routing test only passes via an
+  OR-fallback that matches *that stale checklist* — an accidental pass, not validation.
+- **`gsd-review-concurrent` is genuinely parallel-safe**, not invoke-and-hope. Verified in 1.11.0
+  source: `review-lane-invocation.cjs:161-166` keys every write on slug
+  (`gsd-review-${slug}.md` / `.err`). The one shared path, `gsd-review-prompt.md`, is written once
+  by `build_prompt` (`review.md:242`) strictly before `invoke_reviewers` — single writer, then
+  readers only. Its documented zsh `wait $PIDS` footgun was reproduced empirically (scalar form
+  no-ops the barrier, exits 0 in ~6ms); the skill already uses the correct array form.
+- ⚠ **"Dangling reference" undersells the failure mode.** GSD's own `docs/ARCHITECTURE.md:125`
+  records from #924: *"the Skill tool hard-errors on unknown names rather than re-routing."* So
+  porting the routing without the skill either aborts loudly (fine — the orchestrator's
+  "abort if CYCLE_SUMMARY absent" contract catches it) **or** the review subagent improvises,
+  falls back to `gsd-review` or hand-rolls a review, and still emits a well-formed
+  `CYCLE_SUMMARY` — the loop then reports counts as if the intended review ran. The silent branch
+  could not be ruled out. **Bring the skill onto the same branch**; it is a single self-contained
+  `SKILL.md`.
+- ⚠ **3→5 is not "bounded like today."** `MAX_CYCLES` is the **only** hard bound. Stall detection
+  (`§5c`) is informational — it prints a warning and falls through, with no early exit. No token
+  budget, no wall-clock budget. Declared per-lane ceilings sum in the sequential path
+  (codex/claude 1,200,000ms each; gemini/qwen/cursor/kimi 900,000; …), so a worst-case cycle can
+  exceed an hour and five of them compound it. The bump adds **67% worst-case cost and removes no
+  risk**, and a stalled run now burns 5 cycles before escalating instead of 3 — though stall
+  detection would have flagged it at cycle 2. Preference call, but a costed one.
+- **Upstream viability.** *max-cycles:* viable alone, but an upstream PR also needs the test
+  message, the `commands/gsd/` twin (kept in lockstep by project history), and 5 doc surfaces plus
+  4 localized trees. None of that is needed for a local-only default. *Routing:* cannot go upstream
+  until the skill does.
 
 ### 4.9 — glab / GitLab support (already tracked)
 
