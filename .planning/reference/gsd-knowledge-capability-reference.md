@@ -4,7 +4,7 @@
 **Derived from:** gsd-core `next` @ `2b9713a6` (v1.10.0). File:line refs are to the gsd-core source
 repo unless prefixed `~/.claude/` (the installed copy).
 
-> **2026-08-20 — header bumped to `working` @ `b20ee61b` (v1.11.0), claims NOT re-verified line-by-line.**
+> **2026-08-20 — header bumped to `next` @ `7cf6a079` (v1.11.0), claims NOT re-verified line-by-line.**
 > Spot-check only, against this session's own v1.11.0 CHANGELOG.md read: zero entries touch
 > intel/graphify/gsd-graph internals. One mempalace-adjacent fix landed (#3479/#3527, absent-key
 > defaults for `mirror_kg`/`diary_journal` now resolve to their declared `true` default instead of
@@ -13,7 +13,7 @@ repo unless prefixed `~/.claude/` (the installed copy).
 > this bump only means "checked for a reason to distrust it wholesale, found none."
 >
 > **EXCEPTION — §6 (intel) and §4's `grep`→`intel` auto-upgrade were empirically re-verified
-> 2026-08-20** against `working` @ `71addddf` (v1.11.0): capability gate, the 9-subcommand surface,
+> 2026-08-20** against `next` @ `7cf6a079` (v1.11.0): capability gate, the 9-subcommand surface,
 > `loop render-hooks plan:pre` activation, `drift-guard authority`, and the plan-phase §7.9 dispatch
 > path were each executed or read directly. §6 carries one correction (the "never auto-runs" claim was
 > wrong) — see the CORRECTED note there. Probes ran through the shipped `gsd-core/bin/lib`, which on
@@ -361,10 +361,10 @@ whole `<intel_surface_hint>` block in `${API_SURFACE_PATH ? …}` — so on eith
 silently absent from the planner prompt, with no warning. PATTERNS.md exists from cycle 1 of
 `/gsd:plan-review-convergence`, so **every replan cycle after the first drops the API-surface hint** —
 in the one workflow whose source-grounding pass (§4) is intel's strongest consumer. Verified by
-inspection at `working`@`71addddf`, not by execution. Running `intel api-surface` manually before a
+inspection at `next`@`7cf6a079`, not by execution. Running `intel api-surface` manually before a
 replan is still worthwhile for that reason.
 
-> **CORRECTED 2026-08-20** (empirical trace, gsd-core `working` @ `71addddf`/v1.11.0). Prior text
+> **CORRECTED 2026-08-20** (empirical trace, gsd-core `next` @ `7cf6a079`/v1.11.0). Prior text
 > read "⚠️ Its `plan:pre` step is a `ref.command`, which NO shipped workflow dispatches … run it
 > manually after each refresh." That generalised a true statement about the *generic* contract into a
 > false one about intel. Verified: `loop render-hooks plan:pre --raw` lists the intel hook only when

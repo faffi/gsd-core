@@ -561,7 +561,7 @@ gives the campaign grouping without a duplicate registry.
 ## 6. Per-branch checklist
 
 > ⚠ **The Makefile does not exist on `next`.** It is tracked on `working`/`local/*` only
-> (`b20ee61b`, deliberately never merged). `git checkout -b <slug> next` therefore **deletes
+> (`9e667d2b`, deliberately never merged). `git checkout -b <slug> next` therefore **deletes
 > it from disk**, and every `make` command below fails with "No rule to make target".
 > Either copy it onto the new branch first, or use the `npm` equivalents shown.
 

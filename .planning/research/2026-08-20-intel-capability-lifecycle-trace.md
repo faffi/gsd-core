@@ -3,14 +3,17 @@ created: 2026-08-20
 title: Intel capability — end-to-end lifecycle trace
 area: capability/intel
 kind: research
-traced_against: working @ 71addddf (v1.11.0)
+traced_against: next @ 7cf6a079 (v1.11.0)
 status: findings-not-independently-reverified
 surfaces_defects:
   - "plan-phase.md §7.8 bypass drops the API-surface hint on every replan cycle after the first"
   - "intel patch-meta / extract-exports ignore intel.enabled and write regardless"
 ---
 
-> **Provenance.** Produced by a separate tracing session against `working @ 71addddf`
+> **Provenance.** Produced by a separate tracing session against `next @ 7cf6a079`
+> (traced on the `working` tip of the day; re-anchored to its `next` base because `working`
+> is rebuilt by `make rebuild-working` and its SHAs do not persist — valid here because the
+> trace itself verified `git diff next working` is empty on every intel path)
 > (v1.11.0) and filed here verbatim below the rule. Its claims were verified *by that
 > session* — live probes, file:line citations, and one explicitly-labelled
 > inspection-only finding (the §7.8 bypass). They have **not** been independently
@@ -22,7 +25,7 @@ surfaces_defects:
 
 ---
 
-Traced end-to-end on `working` @ `71addddf` (v1.11.0). `git diff next working` on every intel path is empty, so this is upstream behaviour, not your fork's.
+Traced end-to-end on `next` @ `7cf6a079` (v1.11.0). `git diff next working` on every intel path is empty, so this is upstream behaviour, not your fork's.
 
 ## What it is
 

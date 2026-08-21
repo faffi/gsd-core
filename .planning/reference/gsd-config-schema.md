@@ -3,7 +3,7 @@
 > **Generated file — do not hand-edit.** Regenerate with
 > `node scripts/gen-gsd-config-schema.cjs`, then diff.
 
-Built against **GSD 1.11.0** (this repo's `working` @ `b20ee61b`, dev-source form /gsd:xxx not install-rewritten /gsd-xxx — no VERSION file ships in gsd-core/ source, commit ref is authoritative), from:
+Built against **GSD 1.11.0** (this repo's `next` @ `7cf6a079`, dev-source form /gsd:xxx not install-rewritten /gsd-xxx — no VERSION file ships in gsd-core/ source, commit ref is authoritative), from:
 
 | Source | Contributes |
 |---|---|
