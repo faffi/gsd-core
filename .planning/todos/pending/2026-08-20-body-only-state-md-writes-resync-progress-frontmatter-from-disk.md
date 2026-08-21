@@ -135,10 +135,74 @@ whenever a *Quick Tasks Completed* table exists. So following `/gsd-fast` as wri
 corrupts any STATE.md whose curated progress disagrees with a disk scan — a workflow that
 reads as append-only.
 
-## Not verified
+## Second, INDEPENDENT defect in the same write path — backslash-escape doubling
 
-Reporter also saw every em-dash return double-encoded (`—` → mojibake). `platformReadSync`
-defaults `utf-8` (`src/shell-command-projection.cts:1224`) and `platformWriteSync` routes
-through `normalizeContent` (`:1192-1200`), so I could not attribute it from reading alone.
-If real it is a **separate** defect — it would corrupt the file whether or not resync ran.
-Needs the reporter's repro to isolate.
+The original report described "em-dashes came back double-encoded". **The reporter
+withdrew that on measurement** — mojibake count was 0 before and 0 after, and literal
+U+2014 went 1003 -> 1006, the +3 being the appended row's own text. No em-dash is
+transformed. `platformReadSync`/`normalizeContent` are exonerated; do not re-derive the
+encoding theory from the original wording.
+
+What actually happens: existing `\uXXXX` escapes inside `stopped_at` (a ~12.9 KB
+double-quoted scalar holding 19 of them) have their **backslash run doubled on every
+write** — 1, 2, 4, 8 after three appends. Line 8 grew 12,883 -> 13,016 bytes; the first
+write added exactly 19 bytes for 19 escapes, which pinned the mechanism.
+
+**The asymmetry is in `src/frontmatter.cts` and is provable from source:**
+
+- **Write** — `escapeDoubleQuoted:349-357` escapes *every* backslash unconditionally
+  (`.replace(/\\/g, '\\\\')`).
+- **Read** — `unescapeDoubleQuoted:122-152` recognizes only `\\`, `\"`, `\n`, `\t`,
+  `\r`, `\xHH`. Anything else hits `:148-149` — `out += '\\' + next; // unrecognized
+  escape — keep literally`. **`\u` is not in the recognized set.**
+
+So `\u2014` survives the read as six literal characters and the write re-escapes its
+backslash.
+
+Note the writer emits `\xHH` for controls and **never emits `\uXXXX` in any branch** —
+so GSD's own frontmatter writer did not create those escapes. Something else wrote them,
+and whatever it was is still running.
+
+### `resync: false` does NOT suppress it
+
+Answered from source, and it changes the fix plan. `src/state.cts:3159-3160`:
+
+> *"`syncStateFrontmatter` re-derives frontmatter status/stopped_at from the body on
+> every write"*
+
+`:3156`'s `preFm` snapshot — the thing `resync: false` restores — is scoped to the
+**progress block**. `stopped_at` is protected by a separate #1230 preserve-when-unchanged
+delta (`preBodyStoppedAt`, `:3177`) that is not gated on `resync`. The two snapshots are
+deliberately independent (`:3164-3165`).
+
+**Consequence: the one-line `{ resync: false }` fix closes the `completed_phases` bug and
+leaves the escape doubling live.** Land both or neither.
+
+### Open — possibly a THIRD defect
+
+The 2ⁿ growth does not follow from the asymmetry alone. `\\` **is** recognized on read
+(`:131-132`), so a round-trip of `\\u2014` should unescape and re-escape to itself —
+stable at 2, not doubling. Exponential growth implies the value never reaches the unescape
+branch. `parseQuotedScalar:163` only unescapes when the scalar both starts and ends with
+`"`; otherwise it strips quotes **without unescaping**. A 12.9 KB scalar is a plausible
+candidate for failing that delimiter test.
+
+If confirmed, that is a third distinct defect — a long or unusual scalar silently skipping
+unescape while still being escaped on write. Test posed to the reporter: does the parsed
+value pass `startsWith('"') && endsWith('"')`?
+
+### Why both defects evaded detection
+
+`grep -c '—'` returns 19 before and 19 after, because `\\u2014` still *contains*
+`\u2014`. A count-based probe is structurally blind to the corruption it is measuring.
+It surfaced only via byte-length delta and a `cmp` char offset. Same shape as
+`counts.todos` reporting a display cap: a measurement that looks like verification and
+is not.
+
+## Provenance
+
+Repro, isolation, and the correction to the encoding claim: a downstream
+`bootstrap-terraform` session. The 17-site sweep, the `{ divergedFields }` false friend,
+`cmdStateRecordSession` corroborating the operator's prior incident, the
+propagated-by-imitation trail, and the `resync: false`/`stopped_at` scoping answer:
+this session, against 1.11.0 source.
