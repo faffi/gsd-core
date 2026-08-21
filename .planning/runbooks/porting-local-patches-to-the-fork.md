@@ -283,15 +283,36 @@ Ordered by recommended sequence. Each is independent unless noted.
 
 ### 4.6 — statusline: report against the model's real context window
 
-- **Files:** `hooks/gsd-statusline.js` (+25/−21) — **direct source, no translation needed**
-- **What it does:** reports usage against the model's actual full window so it matches
-  `/context` exactly, citing Claude Code's `CLAUDE_CODE_AUTO_COMPACT_WINDOW` contract.
-- **Effectiveness:** high if the cited contract is current.
-- **Robustness: verify before porting.** The patch cites `code.claude.com/docs/en/env-vars`.
-  Re-check that env var still behaves as described — this is exactly the class of
-  third-party claim that goes stale.
-- **Upstream viability: moderate.** Depends on whether upstream wants to track a Claude
-  Code-specific env var; it is host-specific in a multi-host project.
+**Validated 2026-08-20 by execution.** Stronger than first written — and it has a
+**port-blocking companion change the first draft missed.**
+
+- ⚠ **Porting breaks 3 of 6 existing assertions** in `tests/gsd-statusline.test.cjs:664-692`
+  (`context meter respects CLAUDE_CODE_AUTO_COMPACT_WINDOW (#2219)`). Measured with the test
+  file's own fixtures: `:668` expects `normalizedUsed===60`, gets 50; `:677` expects 100, gets
+  50; `:683` expects 60, gets 50. Expected — the patch deletes the buffer-scaling those
+  assertions exist to protect. **A behaviour-removing change triggers the same TDD merge gate as
+  a behaviour-adding one.** Rewrite `:664-692` to assert the unbuffered contract, or delete the
+  block with a pointer to the new one, **in the same commit**.
+- **The patch is measurably safer than pristine**, not merely equivalent. Executed edge cases:
+  `used_percentage` present but `remaining_percentage` absent → pristine shows **no meter at
+  all**, patched shows 46%. And a **live pristine bug**: with `CLAUDE_CODE_AUTO_COMPACT_WINDOW`
+  set on a non-1M model, pristine's dynamic-buffer branch defaults `total_tokens` to 1,000,000,
+  mis-scales, and **pins the bar at 100% while real usage is 30%**. Patched reads 30%.
+- **1M-agnostic by construction** — the patched code does zero window-size arithmetic; it trusts
+  CC's pre-calculated `used_percentage`, which the docs define as already measuring against the
+  model's full window.
+- **Cannot break other hosts.** No runtime/host branching exists in the file; both versions gate
+  the whole meter on Claude-specific field presence, and absence no-ops identically. The
+  "host-specific" caveat applies to the *env var*, not to file-level breakage.
+- ⚠ **Two citation defects to fix before shipping** (neither substantive): the doc quote is a
+  paraphrase — the live doc says *"always measures against the model's full context window"*, not
+  "always reflects the model's actual full…"; and the comment pairs "+16 points" with
+  "(real 60% shown as 72%)" in one sentence, but that example is a **12**-point gap. Both numbers
+  are real, from two different scenarios — the +16 comes from the separate 84%→100% pinning case.
+  Also, issue refs `#2219`/`#2451` no longer resolve to the right items upstream; the
+  currently-resolvable pair for the buffer bug is `#1194`/`#1211`.
+- **Upstream viability: moderate**, unchanged — but the case is stronger than first stated, since
+  the patch fixes a reproducible pristine display bug rather than only matching a doc contract.
 
 ### 4.7 — review-lane timeouts 540s → 1800s ⚠ MOSTLY INERT AS SPECIFIED
 
