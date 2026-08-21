@@ -285,3 +285,67 @@ the block's current idiom and then testing it revealed the idiom itself is dead 
 provably never fires. See
 `.planning/todos/pending/2026-08-20-port-4-10-mempalace-recall-line-in-the-planner.md` and
 `.planning/runbooks/porting-local-patches-to-the-fork.md` §4.10.
+
+## Exhaustive sweep — 2026-08-21, 1048 bash fences / 6413 lines across next@7cf6a079
+
+Scope confirmed complete: `contexts/`, `templates/`, `capabilities/` carry no agent-executed
+fences; the 394 other files with bash fences are `docs/**` + README (human-facing). All 777
+untagged fences re-scanned for the 5 severest patterns — zero hits.
+
+| Mode | Count | Effect under zsh |
+|---|---|---|
+| Array-from-glob, UNPROTECTED | **11** | aborts fence on no-match; silently skips on match |
+| Array-from-glob, protected | 2 | correct (`review.md:269,273`) |
+| `${ARR[0]}` compounding the above | 9 | never reads the file EVEN WHEN IT EXISTS |
+| `BASH_REMATCH[N]` | **7** | CLI flags parse to empty |
+| Word-split on stored `$VAR` | 5 (+1 embedded) | one giant item instead of N |
+| `read -ra` | 1 | hard error, array stays empty |
+| `${PIPESTATUS[0]}` | 1 | timeout detection never fires |
+| bare glob in command position | ~160 genuine | stderr noise only, NOT fatal |
+| `for x in glob` | 10 | **all protected** — full coverage |
+
+### THREE CORRECTIONS to this todo's earlier framing
+
+1. **Only array-assign and for-list globs ABORT.** A bare command-position glob (`cat glob`,
+   `ls glob`) or a glob inside `$(...)` does NOT abort — the command fails, zsh prints
+   `no matches found`, the script CONTINUES. Two severity tiers, not one.
+2. **`2>/dev/null` cannot suppress zsh's NOMATCH message** — emitted during word-expansion,
+   before the command and its redirections exist. Only `{ ...; } 2>/dev/null` suppresses it.
+   ~160 sites leak that line whenever an artifact is absent.
+3. **`$(...)` DOES word-split in zsh** — only bare `$VAR` does not. Six suspected sites
+   (`next.md:124,280`, `autonomous.md:84`, `plan-review-convergence.md:66`, `review.md:363`,
+   `sync-skills.md:40`) are SAFE. Retracted.
+
+### FOUR NEW FAILURE MODES — separate concerns, each needs its own fix
+
+- **`read -ra` is a hard error in zsh** (`gsd-core/workflows/code-review.md:78`). Measured:
+  `zsh:read:1: bad option: -a`, array length 0. **`/gsd:code-review --files` is silently ignored
+  on every macOS run** — no crash, nothing surfaced to the user.
+- **`BASH_REMATCH[N]` is empty in zsh** (zsh populates `$match`/`$MATCH`). 7 sites, 3 files:
+  `gsd-core/references/phase-argument-parsing.md:39`, `gsd-core/workflows/execute-phase.md:84`,
+  `gsd-core/workflows/plan-phase.md:70,71,72,73,127`. Breaks `--wave N`, `--granularity X`,
+  `--prd`, `--ingest`, `--research-phase`, phase-decimal normalization. Measured: bash `[3]`, zsh `[]`.
+- **Word-splitting on a stored variable** — 5 sites:
+  `execute-phase/steps/per-plan-worktree-gate.md:35,40`, `pr-branch.md:265`,
+  `sync-skills.md:240,245` (the last iterates 70+ skills as ONE item), plus one embedded in a
+  spawned-subagent template at `quick.md:467-470`.
+  Caveat RESOLVED 2026-08-21: `SH_WORD_SPLIT` is NOT set here (absent from `setopt`, 0 hits in
+  `~/.zshrc`), so these hold.
+- **`${PIPESTATUS[0]}`** (`audit-fix.md:145`) — already carved out above.
+
+### The one CORRECT implementation already in the tree
+
+`gsd-core/workflows/review.md:248-273` has BOTH the nullglob shim AND `${#_CTX[@]} -gt 0`
+(length check, not `[0]`). It is the only fully-correct instance in 1048 fences — and it is the
+file **#3300** was filed against. The pattern was solved once and never propagated.
+**The fix applies a pattern already in the tree; it does not invent one.**
+
+WARNING — `complete-milestone.md` is the trap: a shim at :331 protects the for-loop at :335, but
+the glob-array at :369 is in a DIFFERENT fence and unprotected. Checking "does this file have the
+shim" gives a false pass.
+
+### Unconfirmed
+
+`hooks/*.sh` carry `#!/usr/bin/env bash` and use `BASH_REMATCH` legitimately. Out of scope IF
+invoked via their own shebang — the wiring through `managed-hooks-registry.cjs`/`build-hooks.js`
+was not traced. If any hook is invoked as `sh script.sh`, re-audit.
