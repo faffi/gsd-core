@@ -102,7 +102,7 @@ From `CONTRIBUTING.md` / `docs/contributor-standards.md` (distilled in
 
 ## 4. The concerns
 
-**Ten numbered items; nine live** (4.9 glab is separated with its own todo). Earlier drafts
+**Eleven numbered items; ten live here** (4.9 glab is separated with its own todo). **Each has a tracking todo — see §4c.** Earlier drafts
 said "eight" — that predates splitting the graphify block, which is three concerns (4.3,
 4.3b, 4.4, 4.5 — four counting the flag) sharing one diff hunk.
 
@@ -503,6 +503,40 @@ weight out of proportion to their line counts.
 Note `gsd-phase-researcher.md` is the largest agent change (+58/−5): it is not just a call
 site, it teaches the literal-substring matching model. That prose is independently useful
 and could ship even if 4.5's flag did not.
+
+## 4c. Where each concern is tracked
+
+**Every concern in §4 now has its own todo** (`.planning/todos/pending/`), created 2026-08-20.
+The todo is the unit of *obligation* and carries that concern's validation verdict inline; this
+runbook is the unit of *sequence* and holds the full analysis. Neither supersedes the other —
+keep both sides of the link current.
+
+Enumerate them with `node gsd-core/bin/gsd-tools.cjs list-todos`, or
+`ls .planning/todos/pending/2026-08-20-port-*.md` for just this campaign.
+
+| Concern | Severity | Todo file (all under `.planning/todos/pending/`) |
+|---|---|---|
+| 4.1 plan-scan | minor | `2026-08-20-port-4-1-plan-scan-exclude-plan-check.md` |
+| 4.2 context7 | major | `2026-08-20-port-4-2-context7-resolve-library-id-requires-query.md` |
+| 4.3 seed scoring | minor | `2026-08-20-port-4-3-graphify-score-seeds-by-match-quality.md` |
+| 4.3b invariant removal | **major** ⚠ | `2026-08-20-port-4-3b-graphify-seed-floor-invariant-removal.md` |
+| 4.4 budget-cliff | minor | `2026-08-20-port-4-4-graphify-budget-cliff-per-edge-hop-distance.md` |
+| 4.5 exclude-file-types | major | `2026-08-20-port-4-5-graphify-exclude-file-types-flag.md` |
+| 4.6 statusline | major | `2026-08-20-port-4-6-statusline-report-against-real-context-window.md` |
+| 4.7 timeouts | major | `2026-08-20-port-4-7-review-lane-timeouts-540s-to-1800s.md` |
+| 4.8 convergence | major | `2026-08-20-port-4-8-convergence-max-cycles-and-concurrent-routing.md` |
+| 4.9 glab | blocker | `2026-08-20-migrate-the-glab-forge-port-from-gsd-1-10-0-to-1-11-0.md` |
+| 4.10 mempalace | minor | `2026-08-20-port-4-10-mempalace-recall-line-in-the-planner.md` |
+
+**None of these are `blocker` except 4.9** — deliberately. Nothing here is broken; these are
+ports of working local patches. Five genuine blockers already sit in `todos/pending/` and
+stamping this campaign `blocker` would destroy that signal.
+
+**Deliberately NOT captured as seeds, backlog, or threads.** Seeds need a *trigger condition*
+and an undecided proposal — the decision here is already made. Backlog needs a `ROADMAP.md`,
+which this repo does not have (it is not run as a GSD project). A thread would be a second
+ordered index of the same set, free to diverge from this runbook; the bidirectional link above
+gives the campaign grouping without a duplicate registry.
 
 ## 5. Recommended sequence
 
