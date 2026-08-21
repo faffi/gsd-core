@@ -343,10 +343,31 @@ Ordered by recommended sequence. Each is independent unless noted.
 - **What it does:** `cat "$phase_dir"/*MEMORY-RECALL.md` so the planner picks up
   `mempalace-recall`'s `plan:pre` output.
 - **Effectiveness:** high value per byte — without it the recall step produces an artifact
-  nothing reads.
-- **Robustness:** `2>/dev/null`, so it no-ops when the capability is off. Safe.
-- **Upstream viability: strong.** One line, guarded, completes an existing capability's
-  wiring. Arguably an upstream bug that the producer had no consumer.
+  nothing reads. **Validated 2026-08-20; strongest-founded item in the set.**
+- **The producer is real and traceable**, unlike 4.1's. `capabilities/mempalace/capability.json:96-109`
+  formally declares a `plan:pre` step: `{"ref":{"skill":"mempalace-recall"},
+  "produces":["MEMORY-RECALL.md"],"when":"mempalace.enabled","onError":"skip"}`, and
+  `skills/gsd-mempalace-recall/SKILL.md` step 4 says *"Write `MEMORY-RECALL.md` in the current
+  phase directory. The planner consumes it."* Reproduced live: `gsd-tools query loop.render-hooks
+  plan:pre` on a scratch project with `mempalace.enabled: true` returns the step in `activeHooks`.
+- **Three real artifacts on disk**, written this week (Aug 18-19) under
+  `~/gsd-workspaces/{security-vpc,bedrock-access,ctem-gitlab-group}/…/phases/76-*/MEMORY-RECALL.md`,
+  well-formed and matching the skill's documented format. Live production usage, not just spec.
+- **`$phase_dir` is NOT the `$FORGE` defect class.** It is bound by prose in an earlier step
+  (`gsd-planner.md:614`, "Extract from init JSON"), and the three **pre-existing** sibling lines
+  in the same fence (`*-CONTEXT.md`, `*-RESEARCH.md`, `*-DISCOVERY.md`) already rely on the
+  identical cross-fence binding. The new line is a 4th use of a shipped pattern — it cannot
+  introduce a scoping bug its neighbours do not already have.
+- **Inert by default:** `mempalace.enabled` defaults `false`, so out of the box the step never
+  fires and the glob never matches. Contribution is real but scoped to projects that opt in.
+- ⚠ **zsh caveat (minor, inherited).** Under zsh's default `NOMATCH`, a non-matching glob makes
+  the *shell* abort and print `no matches found:` **before `cat` runs**, so `2>/dev/null` does not
+  suppress it. Verified by direct execution. Does not fire in practice — Claude Code's Bash tool
+  runs fences via `bash -c` — and all three sibling lines share it. Not introduced here.
+- **Upstream viability: strong.** One line, guarded, completes an existing capability's wiring.
+  **"Producer with no consumer" is confirmed:** a repo-wide `MEMORY-RECALL` grep at 1.11.0 finds
+  only the capability declaration, the producing skill, generated registry output and docs —
+  **zero** consumers in any agent or workflow. Arguably an upstream bug.
 
 ---
 
