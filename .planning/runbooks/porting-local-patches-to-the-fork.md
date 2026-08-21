@@ -4,7 +4,15 @@
 `local/*` branches of this fork at 1.11.0, examining each for effectiveness and
 robustness, and shaping each so it *could* go upstream.
 
-**Status 2026-08-20:** analysis complete, nothing ported yet. Work through §4 one at a time.
+**Status 2026-08-20:** analysis complete and **independently validated**; nothing ported yet.
+Work through §4 one at a time.
+
+> **Validated 2026-08-20** by a separate empiricist agent running every claim against the real
+> trees. It found 3 CRITICAL errors — all corrected above and marked ⚠: the 540s timeout file
+> (gemini/cursor → **antigravity**), a missing implementation file in 4.5 (**`src/graphify.cts`**),
+> and a checklist whose first step deletes the Makefile it then calls. It also surfaced 4.3b,
+> a removed invariant the first draft framed as additive. Claims it could NOT verify are marked
+> "unverified" inline — treat those as open, not settled.
 
 ---
 
@@ -27,11 +35,23 @@ npx -y --package=@opengsd/gsd-core@1.10.0 -- gsd-core --claude --global \
 cp -R /tmp/gsd-pristine-1100 /tmp/gsd-norm
 find /tmp/gsd-norm -type f \( -name '*.md' -o -name '*.cjs' -o -name '*.js' -o -name '*.json' \) \
   -exec perl -pi -e 's{/tmp/gsd-pristine-1100}{\$HOME/.claude}g' {} +
-diff -rq /tmp/gsd-norm/gsd-core ~/.claude/gsd-core
+diff -rq /tmp/gsd-norm ~/.claude          # FULL tree — the gsd-core-only form yields 13, not 19
 ```
+
+The full-tree form yields 23 `Files … differ`: the **19** real GSD modifications plus 4
+bookkeeping files that always differ (`.gsd-source`, `gsd-file-manifest.json`,
+`gsd-install-state.json`, `settings.json`). Scope to `gsd-core/` only and you see 13,
+because the other 6 live in `agents/`, `hooks/` and `skills/`.
 
 Result: **19 modified files across `gsd-core/`, `agents/`, `hooks/`, `skills/` — all 19
 recorded in `~/.claude/scripts/gsd-local-patches-1.10.0.diff`, zero unrecorded drift.**
+Verified both directions with `comm`; both set differences empty.
+
+**Scope of that claim:** it covers *modifications to shipped files* only. A full-tree diff also
+shows ~45 `Only in ~/.claude` entries — 17 personal agents, ~13 hooks, ~14 skills (including
+`gsd-review-concurrent`), a generated `gsd-core/USER-PROFILE.md`, and two stray patch artifacts
+(`bin/lib/capability-registry.cjs.bak-540s`, `review-lane-descriptor.cjs.bak-540s`). Those are
+additions, not drift, and survive updates because they are not `gsd-`-prefixed shipped content.
 
 **All 8 concerns are still live at 1.11.0.** Verified individually — nothing was fixed
 upstream in the interim (unlike the frontmatter escape-doubling defect, which was).
@@ -49,7 +69,7 @@ be copied across — they must be re-authored against the TypeScript source.
 | `gsd-core/bin/lib/graphify-command-router.cjs` | `src/graphify-command-router.cts` |
 | `gsd-core/bin/lib/plan-scan.cjs` | `src/plan-scan.cts` |
 | `gsd-core/bin/lib/review-lane-descriptor.cjs` | `src/review-lane-descriptor.cts` |
-| `gsd-core/bin/lib/capability-registry.cjs` | **generated** — `capabilities/{gemini,cursor}/capability.json`, then `npm run gen:capability-registry` |
+| `gsd-core/bin/lib/capability-registry.cjs` | **generated** — `capabilities/antigravity/capability.json` (`:121`), then `npm run gen:capability-registry` |
 | `agents/*.md`, `gsd-core/**/*.md` | direct (tracked source) |
 | `hooks/gsd-statusline.js` | direct (tracked; `scripts/build-hooks.js:64` copies it) |
 
@@ -62,8 +82,8 @@ Run `make build` after any `src/` or `capabilities/` edit — the compiled lib i
 From `CONTRIBUTING.md` / `docs/contributor-standards.md` (distilled in
 `.planning/reference/contributing-reference.md`):
 
-- **One concern per PR.** Eight concerns → eight branches. The graphify trio should split
-  into three; they are independently defensible.
+- **One concern per PR.** Nine live concerns → nine branches. The graphify block is one diff
+  hunk but four concerns (4.3, 4.3b, 4.4, 4.5); split the commits even though the port is atomic.
 - **Branch off `next`**, never off `working` or another `local/*`.
 - **TDD is a merge gate** for behavior-adding work: RED (failing test, own commit) → GREEN
   → REFACTOR, committed separately.
@@ -80,15 +100,25 @@ From `CONTRIBUTING.md` / `docs/contributor-standards.md` (distilled in
 
 ---
 
-## 4. The eight concerns
+## 4. The concerns
 
-Ordered by recommended sequence. Each is independent.
+**Ten numbered items; nine live** (4.9 glab is separated with its own todo). Earlier drafts
+said "eight" — that predates splitting the graphify block, which is three concerns (4.3,
+4.3b, 4.4, 4.5 — four counting the flag) sharing one diff hunk.
+
+Ordered by recommended sequence. Each is independent unless noted.
 
 ### 4.1 — `plan-scan`: exclude `PLAN-CHECK.md` from the plan count ⭐ start here
 
 - **Files:** `src/plan-scan.cts` (13 lines added)
-- **What it does:** `{phase}-PLAN-CHECK.md` is the `gsd-plan-checker`'s derivative output —
-  same class as `-PLAN-REVIEW.md`, which is already excluded. Without the exclusion it falls
+- **What it does:** `{phase}-PLAN-CHECK.md` was **observed in production** and is the same
+  class of derivative artifact as `-PLAN-REVIEW.md`, which is already excluded.
+  ⚠ **Provenance unverified:** a repo-wide grep across the 1.11.0 fork, the pristine 1.10.0
+  install and the full `~/.claude` tree finds **zero producers** of that filename;
+  `gsd-plan-checker` returns an inline YAML block (`gsd-core/workflows/plan-phase.md:1085`),
+  not a file. The incident is real and documented (`~/.claude/runbooks/gsd-update-runbook.md:259-272`
+  — rbac-backport phase 05 read 7 plans/6 summaries pristine, 6/6 patched), but do not claim
+  a producer upstream without locating one. The regex defect alone justifies the fix. Without the exclusion it falls
   through the loose `/PLAN/i` fallback in `isRootPlanFile` and counts as an executable plan.
 - **Consequence (stated in the patch):** a phase with N real plans and N summaries reads
   N+1 plans / N summaries → `implementation_complete: false`. **A phase that can never
@@ -114,10 +144,16 @@ Ordered by recommended sequence. Each is independent.
 - **Robustness:** doc-only, no build, no runtime risk.
 - **Upstream viability: strong.** Factual API correction, verifiable against the context7
   tool schema.
-- **Note:** `gsd-executor.md` also *drops* `mcp__plugin_context7_context7__*` from the
-  availability check. **Confirm that is intentional** — if the plugin-scoped server is
-  still a real deployment, removing it narrows detection. This is the one part of 4.2 that
-  is not obviously a correction.
+- ⚠ **Open question, now with evidence.** `gsd-executor.md` *drops*
+  `mcp__plugin_context7_context7__*` from the availability check. Validated 2026-08-20:
+  that pattern is **live and current** in 1.11.0 — present in 8 other files
+  (`gsd-domain-researcher`, `gsd-project-researcher`, `gsd-advisor-researcher`,
+  `gsd-ui-researcher`, `gsd-phase-researcher`, `gsd-ai-researcher`, `gsd-planner`,
+  `docs/AGENTS.md`). Not legacy cruft.
+  **Scope of the change is narrower than it looks:** the removal is from *body prose* only —
+  the frontmatter `tools:` allowlist at `~/.claude/agents/gsd-executor.md:4` still grants it.
+  So the effect is a detection gap (the model may not think to look under that name), not a
+  permissions gap. Decide deliberately; do not port it as if it were part of the API fix.
 
 ### 4.3 — graphify seed-floor: score seeds by match quality
 
@@ -126,11 +162,35 @@ Ordered by recommended sequence. Each is independent.
   matches, instead of treating a substring sweep as an inviolable floor.
 - **Measured, in the patch comment:** `"auth"` also matches author/authorization/authentik
   → **701 seeds, 95,231 tokens, 47× the planner's 2,000-token budget.**
-- **Effectiveness:** high, and it is the only patch in the set with a quantified before.
+- **Effectiveness:** high — it carries a quantified before. (An earlier draft called it the
+  *only* such patch; that is wrong. 4.5 measures `document 15,069 / 22,219 nodes (68%)` and
+  4.6 measures `+16 points, real 60% shown as 72%`.)
 - **Robustness:** scoring only, no filtering at that site — a deliberately conservative
   seam. Verify the trimmer is the sole consumer.
 - **Upstream viability: strong**, given the measurement. Needs a reproducible benchmark
   rather than a one-off number.
+
+### 4.3b — graphify: the seed-floor invariant is REMOVED ⚠ largest undescribed change
+
+- **Files:** `src/graphify.cts` (the `applyBudget` rewrite, inside the same ~315-line block)
+- **Surfaced by validation 2026-08-20.** 4.3 and 4.4 describe scoring and hop-tracking as
+  conservative/additive. The same hunk also **replaces the whole-tier confidence-deletion
+  algorithm with a continuous per-edge ranker** (confidence → relation → hop → weight →
+  lexical, binary search over prefix length, two-pass seed-floor optimisation whose comment
+  records two prior failed attempts).
+- **The patch says so itself, verbatim:** *"upstream's 'seeds are an inviolable floor'
+  invariant is REMOVED by this patch — PASS 1 pins the floor to a single seed and PASS 2
+  grows it only as far as the budget allows. So `total_nodes` may be far below the seed
+  count, and a reader must NOT assume `total_nodes >= seeds matched`."*
+- **This is unconditional.** It fires for **any** budgeted graphify query, not only when
+  `--exclude-file-types` is passed. Output shape changes for every existing budgeted caller.
+- **Robustness: the highest-risk item in the set**, and the one whose framing was most wrong
+  in the first draft. It is not additive and it breaks a documented invariant.
+- **Upstream viability: needs its own PR and its own argument.** Removing an invariant is a
+  breaking change to a contract; it wants the benchmark from 4.3 plus an explicit note that
+  `total_nodes >= seeds` no longer holds.
+- **Action:** port 4.3/4.4/4.3b together — they are one hunk — but write them up as three
+  commits, and do not describe the result as additive.
 
 ### 4.4 — graphify budget-cliff: per-edge hop distance
 
@@ -147,8 +207,14 @@ Ordered by recommended sequence. Each is independent.
 
 ### 4.5 — graphify `--exclude-file-types`
 
-- **Files:** `src/graphify-command-router.cts` (+33), plus call sites in
+- **Files:** `src/graphify.cts` (**the implementation — `filterGraphByFileType()`, ~95 lines**),
+  `src/graphify-command-router.cts` (+33, **flag parsing only**), plus call sites in
   `gsd-core/references/planner-load-graph-context.md` and `agents/gsd-phase-researcher.md`
+- ⚠ **Corrected 2026-08-20:** an earlier draft omitted `src/graphify.cts`. The router hunk is
+  purely CLI parsing plus one call; `filterGraphByFileType` — the corpus/eligibility split, the
+  `matched_nodes_excluded` counting, edge-consistency filtering, and the wiring into
+  `graphifyQuery`/`applyBudget`/`buildQueryResponse` — is all in `graphify.cts`. A branch built
+  from the old list would ship a flag with no behaviour behind it.
 - **What it does:** new flag separating **corpus membership** from **retrieval
   eligibility**. Upstream offers only `.graphifyignore`, which deletes facts outright.
   Agent call sites pass `document` so the planner stops spending budget on the project's own
@@ -175,8 +241,12 @@ Ordered by recommended sequence. Each is independent.
 
 ### 4.7 — review-lane timeouts 540s → 1800s
 
-- **Files:** `capabilities/{gemini,cursor}/capability.json` → regenerate registry;
+- **Files:** `capabilities/antigravity/capability.json` (`:121`) → regenerate registry;
   `src/review-lane-descriptor.cts`
+- ⚠ **Corrected 2026-08-20:** an earlier draft named `capabilities/{gemini,cursor}/capability.json`.
+  Both contain **zero** `540s`/`--print-timeout` hits — gemini's only timeout key is an
+  unrelated `timeoutFloorMs: 900000`. The patched values sit under `"slug": "antigravity"`.
+  Editing gemini/cursor would change the wrong lane.
 - **What it does:** native `--print-timeout` 540s→1800s and external cap 600000ms→1920000ms.
   Both layers move together, preserving outer-cap > inner-timeout.
 - **Effectiveness:** unknown — **this is the weakest patch in the set.**
@@ -245,11 +315,11 @@ split over three sections. Full map of all 19:
 | `gsd-core/workflows/ship.md` · `inbox.md` · `pr-branch.md` | 4.9 glab | no |
 | `skills/gsd-plan-review-convergence/SKILL.md` | 4.8 convergence | no |
 | `hooks/gsd-statusline.js` | 4.6 statusline | no — tracked source |
-| `bin/lib/graphify.cjs` | 4.3 + 4.4 | **yes → `src/graphify.cts`** |
+| `bin/lib/graphify.cjs` | **4.3 + 4.3b + 4.4 + 4.5** (one hunk, four concerns) | **yes → `src/graphify.cts`** |
 | `bin/lib/graphify-command-router.cjs` | 4.5 | **yes → `src/graphify-command-router.cts`** |
 | `bin/lib/plan-scan.cjs` | 4.1 | **yes → `src/plan-scan.cts`** |
 | `bin/lib/review-lane-descriptor.cjs` | 4.7 timeouts | **yes → `src/review-lane-descriptor.cts`** |
-| `bin/lib/capability-registry.cjs` | 4.7 timeouts | **yes → `capabilities/*/capability.json` + regenerate** |
+| `bin/lib/capability-registry.cjs` | 4.7 timeouts | **yes → `capabilities/antigravity/capability.json` + regenerate** |
 
 **All four agent edits are direct-source and need no translation** — `agents/*.md` is
 tracked here. Two of them (`gsd-executor`, `gsd-phase-researcher`) are the *only* place a
@@ -274,16 +344,22 @@ and could ship even if 4.5's flag did not.
 
 ## 6. Per-branch checklist
 
+> ⚠ **The Makefile does not exist on `next`.** It is tracked on `working`/`local/*` only
+> (`b20ee61b`, deliberately never merged). `git checkout -b <slug> next` therefore **deletes
+> it from disk**, and every `make` command below fails with "No rule to make target".
+> Either copy it onto the new branch first, or use the `npm` equivalents shown.
+
 ```bash
 git checkout -b local/<slug> next
+cp ../Makefile . 2>/dev/null || git checkout local/track-planning-history -- Makefile
 # translate the patch to real source (§2) — never edit bin/lib/*.cjs
 # RED: failing test, own commit
 # GREEN: minimal fix
 # REFACTOR: separate commit
-make build                                   # compiled lib is what runs
+npm run build                                # or `make build` if you restored the Makefile
 env -u GSD_AGENTS_DIR npm test
 npm run lint:ci
-make rebuild-working && make install         # exercise it for real
+# then: git checkout working && make rebuild-working && make install
 ```
 
 Add a changeset only if the branch is being promoted to a contribution branch off `next`.
