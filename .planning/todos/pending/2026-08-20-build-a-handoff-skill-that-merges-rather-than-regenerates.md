@@ -7,7 +7,7 @@ build_with: skill-creator (Anthropic skill)
 files:
   - .planning/seeds/SEED-001-handoff-skill.md (the full spec — build from this)
   - .planning/research/2026-08-20-pause-work-missing-directives-and-template-defects.md (problem statement, 6 defects)
-  - skills/gsd-handoff/SKILL.md (the artifact to create — IN THIS REPO, on a local/* branch)
+  - skills/gsd-handoff/SKILL.md (DOES NOT EXIST YET — the artifact to create, in this repo on a local/* branch)
 ---
 
 ## Problem
