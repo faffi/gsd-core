@@ -42,6 +42,11 @@ install 2 → DESTROYED gsd-review-concurrent
             SURVIVED  gsd-dev-preferences   ← has explicit migration handling at :10810-10816
 ```
 
+**The `/tmp` result transfers to the real target, verified by arithmetic:** `make install`
+runs `node bin/install.js --claude --global` (Makefile `install:`), this repo ships **71**
+skills, and `~/.claude/skills` holds exactly **74** `gsd-*` — the 71 plus these 3. That is
+provably the directory `:10821` reads.
+
 Reproduced across two independent runs. `gsd-dev-preferences` survives **only** because the
 installer carries a named special case for it; that is not a general protection.
 

@@ -26,7 +26,10 @@ not a destroy. It is also why a `gsd-`-prefixed skill is correct rather than dan
 ## Install
 
 > ⛔ **STOP — `make install` currently destroys three local-only artifacts.**
-> Proven by execution 2026-08-20: `bin/install.js:10820-10829` `rmSync`s every `skills/gsd-*`
+> Proven by execution 2026-08-20, and **confirmed for the real `--claude --global` target**,
+> not just a `--config-dir` sandbox: this repo ships 71 skills and `~/.claude/skills` holds
+> exactly 74 `gsd-*` — the 71 plus these 3 — so that is provably the directory the wipe reads.
+> `bin/install.js:10820-10829` `rmSync`s every `skills/gsd-*`
 > directory and replaces them *from this repo*, so any `gsd-*` skill or agent that exists only
 > in `~/.claude` is deleted and never restored. Three do:
 > `skills/gsd-review-concurrent` (217 lines), `skills/gsd-graph` (108),
