@@ -1,6 +1,6 @@
 ---
 created: 2026-08-21T02:30:00.000Z
-title: zsh 1-indexed arrays make 12 glob guards silently read nothing (and one swallow a test exit code)
+title: zsh glob guards in shipped fences abort the block on the common no-match path (11 sites; a 12th is an unrelated PIPESTATUS bug)
 area: tooling
 severity: blocker
 files:
@@ -16,6 +16,145 @@ files:
   - gsd-core/workflows/review.md:269-273 (CONTEXT, RESEARCH; HAS the shim, still broken — the #3300 file)
   - gsd-core/workflows/resume-project.md:67-68 (the sanctioned #2962 nullglob shim, for reference)
 ---
+
+## ⚠ CORRECTED 2026-08-21 by a 5-agent review — read this before the section below
+
+The original framing (title included) is **wrong about the primary mechanism**, and the site
+count is inflated. Verified by execution and by reading each file.
+
+**1. The fatal failure is NOMATCH ON THE ASSIGNMENT, not `${ARR[0]}` indexing.**
+When the glob does NOT match — the COMMON case, since CONTEXT/RESEARCH/DISCOVERY are all
+optional by design — `_CTX=( "$dir"/*-CONTEXT.md )` **aborts the entire fence** under zsh:
+```
+$ /bin/zsh -c 'eval "_CTX=( ./*-CONTEXT.md ); echo reached"'
+zsh: no matches found: ./*-CONTEXT.md      # "reached" never prints, exit 1
+```
+Indexing is the *secondary* bug (silent empty read when the glob DOES match). So the title
+understates it: not "silently read nothing" but "crash the block, on the normal path."
+
+**2. It CASCADES.** `agents/gsd-planner.md:697-702` chains three globs in ONE fence. A missing
+`RESEARCH.md` kills the `DISCOVERY.md` read at :701-702 — even when DISCOVERY.md exists.
+
+**3. `gsd-core/workflows/review.md:269,273` does NOT use `${ARR[0]}`** — it uses
+`if [ ${#_CTX[@]} -gt 0 ]`. Still broken, but via NOMATCH-on-assignment only. The inventory
+table below lists it under the wrong mechanism.
+
+**4. `gsd-core/workflows/audit-fix.md:145` is a DIFFERENT BUG** — `PIPESTATUS` (uppercase) does
+not exist in zsh in any form; zsh's is lowercase `pipestatus`, 1-indexed. Not a glob bug, not
+fixable by any glob change. **Carve it out as its own one-line fix.** It inflated the count.
+
+**5. FALSE UNIFICATION** — the sites do not want the same operation:
+9 × `cat` (content) · 1 × `ls -la` (session-report, metadata) · 2 × `ls -d` (review-backlog,
+*directories* via `999*`) · 1 unrelated (audit-fix). A single "read+cat" mechanism serves 9 of 12.
+
+**6. "Just fix the index" (`[0]`→`[1]`, or a length check) is NOT a fix** — it leaves the
+NOMATCH crash fully intact. review.md already uses the length form and is still broken.
+
+## Chosen fix — validated 8/8 across bash 3.2.57 and zsh 5.9
+
+```bash
+while IFS= read -r f; do cat "$f"; done < <(find "$d" -maxdepth 1 -name '*-CONTEXT.md' 2>/dev/null | sort)
+```
+Matched/unmatched, multi-file ordering (`03 01 10 02` → `01 02 03 10`, identical to glob
+collation), spaces in names, missing dir, empty variable, and **loop-variable state survives**
+(process substitution `< <()` does not fork a subshell; `cmd | while read` is the only form
+that loses state — do not use it).
+
+**This is the codebase's DOCUMENTED policy, not an invention** —
+`gsd-core/workflows/code-review.md:668-669`: *"macOS ships with bash 3.2 (GPL licensing). This
+workflow does NOT use `mapfile` (bash 4+ only) — all array construction uses portable
+`while IFS= read -r` loops compatible with bash 3.2."* All testing was done on the real macOS
+system bash (3.2.57), not a Homebrew 5.x.
+
+**Rejected alternative:** `if [ -n "$ZSH_VERSION" ]; then setopt NULL_GLOB; fi` + for-glob tied
+on all 8 cells and needs no external binaries — but it sets a GLOBAL shell option, which is
+exactly #3409's G4 defect ("a nullglob left set by an earlier block in the SAME shell session").
+Tie on behaviour → take the one that cannot leak state.
+
+**Also rejected:** `find -print0 | sort -z | xargs -0`. Measured identical to the chosen form on
+every cell, but `-print0`/`sort -z`/`xargs -0` appear **zero times** in this repo and are all
+non-POSIX GNU/BSD extensions — against the spirit of `scripts/lint-portable-timeout.cjs` (#2351),
+which bans GNU-only tools in shipped fences because stock macOS lacks them. CI includes
+`windows-latest`.
+
+**Also rejected:** `${#ARR[@]} -gt 0` WITHOUT a nullglob shim — strictly WORSE than today in
+bash: unmatched glob yields count 1 (the literal pattern) and emits
+`cat: ...*-CONTEXT.md: No such file or directory`, where the current `[ -e "${ARR[0]}" ]`
+correctly skips. Confirmed against the bash manual: *"If `nullglob` is set, patterns that match
+no files expand to nothing and are removed, rather than expanding to themselves."*
+
+## The VERIFICATION sites need no new code — an existing verb already owns the rule
+
+`gsd_run query verification.resolve-file "$PHASE_DIR" --raw` exists
+(`src/verification.cts:834-853`). Added by **#3357 → PR #3513** for EXACTLY this class:
+
+> *"The issue named two copies. There were seven, in four grammars… and two in shell. All seven
+> now route through one exported `resolveVerificationFile`; the shell copies via a new
+> `verification resolve-file` verb rather than hand-rolling the rule an eighth time."*
+
+Replacing `agents/gsd-verifier.md:85-86` with it is **7 bytes SHORTER** (96 → 89) — which is
+load-bearing: that file is **49,150 bytes against a 49,152 cap (2 bytes of headroom)**, tier
+LARGE per `tests/agent-size-budget.test.cjs:66`. Any net addition there fails the build.
+
+## Scope — CONTRIBUTING.md forces a split
+
+`CONTRIBUTING.md:195` *"One concern per PR"* and `:199` *"Scope matches the approved issue."*
+`:52` *"An enhancement… does **not** add new commands, new workflows, or new concepts."*
+
+**IN SCOPE (one fix PR):** the glob idiom at the no-selection-rule sites; routing VERIFICATION
+through the existing verb; `scripts/lint-portable-glob-guard.cjs` as a ratchet (precedent: the
+#2351 PR shipped its own ratchet in the same PR); a regression test (`:43` *"Write a test that
+would have caught the bug"*).
+
+**OUT OF SCOPE — separate items, must NOT be bundled:**
+- A verb exposing `scanPhasePlans.summaryFiles`. **No verb exposes it today** and
+  `summaryFiles` is returned in filesystem order, unsorted (`src/plan-scan.cts` concatenates raw
+  `readdirSync`; `src/phase.cts:537` sorts client-side). A new verb = a new command =
+  enhancement/feature class, needs its own approved issue BEFORE any code.
+- `audit-fix.md:145` PIPESTATUS — different mechanism.
+- **`phase.list-artifacts` DOES NOT EXIST** but is called twice at
+  `agents/gsd-plan-checker.md:758,760`. Runtime: `Unknown phase subcommand. Available:
+  uat-passed, next-decimal, add, add-batch, insert, remove, complete, list-plans`. Nothing
+  catches it — **no test validates that a `gsd_run <verb>` call site names a live verb.**
+- Bare unshimmed `gsd-tools query phase.add` / `commit` calls at
+  `commands/gsd/review-backlog.md:39,52` and its byte-identical SKILL.md twin — the exact bug
+  `tests/no-bare-gsd-tools-command-position.test.cjs` exists to catch.
+- **Structural gap behind several of these:** that lint, `scripts/sync-runtime-launcher.cjs`,
+  and `tests/no-hardcoded-home-gsd-tools.test.cjs` all scan only `agents/` + `gsd-core/workflows/`.
+  **`skills/` is in none of them**, and nothing enforces `commands/gsd/X.md` ↔ `skills/gsd-X/SKILL.md`
+  body parity — which is why two copies of the same broken code shipped undetected.
+
+## Merge gates (verified, with commands)
+
+- **Changeset required** (`src/`, `agents/`, `commands/` are all in `USER_FACING_PREFIXES`,
+  `scripts/changeset/lint.cjs:32-39`) — **`--type Fixed`**. Precedent: `run-with-timeout` added a
+  whole new verb and still shipped `type: Fixed` (`.changeset/2351-portable-timeout.md`).
+  `Fixed` is NOT in `TRIGGERING_TYPES` (`scripts/lint-docs-required.cjs:37`), so the
+  docs-required gate is a **no-op**.
+- **`scripts/lint-unreachable-guard-drift.cjs`** scans `gsd-core/workflows`, `commands`, `agents`
+  AND `skills` — baseline 0, ratchet with no allowlist escape. This is the gate that grades the fix.
+- **New tests must route subprocess spawns through `tests/helpers/process-seam.cjs`**
+  (`local/no-unbounded-spawn`, no allowlist since #3148) — directly relevant, since testing a
+  cross-shell fix means spawning both shells.
+- **`node scripts/sync-runtime-launcher.cjs`** inserts the `gsd_run` preamble into
+  `session-report.md` byte-identically and idempotently (verified in a scratch tree) — but leaves
+  the orphaned consumer line for hand-rewriting. Do NOT hand-copy the 2.8KB one-liner.
+- Shim status: 7 of 10 target files already carry it; `session-report.md` and the two
+  `review-backlog` copies do not (the latter two have no generator coverage at all).
+- **`--pick` on an array COMMA-joins** (`String(['a','b c'])` → `a,b c`), so JSON+`--pick` is the
+  wrong shape for multi-path output. Newline-`--raw` + `while read` is the only idiomatic form.
+- **The `@file:` >50KB spill guard is in the JSON branch ONLY** (`src/io.cts:144-160`); raw output
+  writes `String(rawValue)` with no size check. Any future verb must return PATHS, never contents.
+
+## The harness is why this survived four fix rounds
+
+`tests/unreachable-shell-guard.test.cjs:148` extracts the LIVE fences from shipped `.md` — good —
+then executes them under a hardcoded `#!/usr/bin/env bash` with `interpreter: 'bash'`. The runtime
+executes them under the user's login shell, which on macOS is zsh. **The test binds to the deployed
+contract and validates it against a shell the deployment does not use.** Every guard passes; every
+guard is dead where it runs. Upstream trail: #2770 → #2962 → #3300 → #3409, each fixing the shape
+that was visible under bash. **Parameterizing that harness over both shells is mandatory, not
+optional** — without it nothing catches a regression.
 
 ## Problem
 
