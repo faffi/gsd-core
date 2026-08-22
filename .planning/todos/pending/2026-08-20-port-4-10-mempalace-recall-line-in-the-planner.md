@@ -55,14 +55,23 @@ strongest-founded of the ten.**
   _DISCOVERY=( "$phase_dir"/*-DISCOVERY.md )
   if [ -e "${_DISCOVERY[0]}" ]; then cat "${_DISCOVERY[@]}"; fi
   ```
-  Array-glob + existence check on **all three** siblings — upstream fixed exactly the zsh
-  `NOMATCH` hazard this todo had recorded as permanently inherited. Under zsh's default the
-  *shell* aborts and prints `no matches found:` **before `cat` runs**, so `2>/dev/null` never
-  suppresses it.
+  Array-glob + existence check on all three siblings.
 
-  **Porting the hunk verbatim would reintroduce the bug upstream just removed**, and leave the
-  only non-conforming line in a block whose three neighbours all use the safe form. It would
-  apply cleanly and no test would catch it.
+  ⚠ **RE-CORRECTED 2026-08-22 — the paragraph that stood here was itself wrong.** It claimed
+  *"upstream fixed exactly the zsh NOMATCH hazard."* **Upstream did not.** Measured against the
+  1.11.0 form with the MEMORY-RECALL glob:
+
+  ```
+  no-match:  zsh:1: no matches found: /tmp/n410/*MEMORY-RECALL.md      # still aborts
+  match:     SKIPPED                                                   # ${_R[0]} empty, cat never runs
+  ```
+
+  The array form is broken in **both** directions under zsh. What it actually fixed is
+  bash-only: `cat glob 2>/dev/null` emits a spurious `cat: … No such file` and a non-zero exit
+  in bash when the glob misses; the `[ -e ... ]` guard suppresses that. It has no bearing on zsh.
+
+  So the honest comparison is: the 1.10.0 hunk and the 1.11.0 idiom are **both** broken under
+  zsh, differently. Neither is a safe target. Port to the validated form in the Solution section.
 
 ## ⛔ BLOCKED 2026-08-21 — the surrounding idiom is dead under zsh
 
@@ -74,16 +83,25 @@ Blocking todo: `.planning/todos/pending/2026-08-21-zsh-array-index-guards-silent
 
 Once that lands, port this line in whatever form that fix establishes — not the form below.
 
-## Solution — REWRITTEN 2026-08-21, do not use the raw patch hunk
+## Solution — REWRITTEN 2026-08-22. Do NOT use the raw patch hunk, and do NOT copy the neighbours.
 
-Match the 1.11.0 idiom, not the 1.10.0 one:
+Both the 1.10.0 hunk and the 1.11.0 block idiom are dead under zsh. Use the validated form —
+8/8 across bash 3.2.57, zsh 5.9, **and POSIX `sh`**; correct ordering, silent on no-match,
+exit 0, no shell options set, no non-POSIX flags:
 
 ```bash
-_RECALL=( "$phase_dir"/*MEMORY-RECALL.md )
-if [ -e "${_RECALL[0]}" ]; then cat "${_RECALL[@]}"; fi  # From mempalace-recall (plan:pre)
+find "$phase_dir" -maxdepth 1 -name '*MEMORY-RECALL.md' 2>/dev/null | sort | while IFS= read -r f; do cat "$f"; done
 ```
 
 Insert after the `_DISCOVERY` pair in `<step name="gather_phase_context">`.
+
+⚠ **Do not "simplify" to `${#_RECALL[@]} -gt 0`** — without a `nullglob` shim that is *worse*
+than the current code in bash: an unmatched glob yields count 1 (the literal pattern) and emits
+`cat: …: No such file`, where `[ -e "${_RECALL[0]}" ]` at least skips silently.
+
+**Size:** `agents/gsd-planner.md` is 49,051 / 57,344 bytes (XL tier, `tests/agent-size-budget.test.cjs`)
+— 8,293 free. The one-line addition is comfortably inside it. (Contrast `agents/gsd-verifier.md`,
+which has 2 bytes.)
 
 ⚠ **The glob has NO leading dash** — the producer writes `MEMORY-RECALL.md`, not
 `*-MEMORY-RECALL.md`, unlike all three siblings. That asymmetry is correct and is in the
