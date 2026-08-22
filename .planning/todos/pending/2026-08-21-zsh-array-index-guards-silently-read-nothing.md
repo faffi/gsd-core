@@ -17,6 +17,11 @@ files:
   - gsd-core/workflows/resume-project.md:67-68 (the sanctioned #2962 nullglob shim, for reference)
 ---
 
+> **📓 The whole picture lives in `.planning/reference/shell-fence-portability.md`** — six
+> mechanisms, the full 25-site inventory with per-site status, six measured fix candidates, the
+> upstream trail, and the merge constraints. **Update that document in the same commit as any
+> fix**; it is `reference/`, so a stale row there is a bug. This todo is the actionable item.
+
 ## ⚠ CORRECTED 2026-08-21 by a 5-agent review — read this before the section below
 
 The original framing (title included) is **wrong about the primary mechanism**, and the site
