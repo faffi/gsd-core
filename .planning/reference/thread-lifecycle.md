@@ -1,9 +1,13 @@
 ---
 description: "Lifecycle and workflow of GSD thread records"
-last_verified: 2026-08-20
+last_verified: 2026-08-21
 ---
 
 # Thread Lifecycle
+
+> **Generated:** 2026-08-21T23:25:00Z
+> **GSD version:** 1.11.0-58-g026e2a73
+> **Source:** gsd-core/workflows/thread.md
 
 ## Purpose
 
@@ -91,13 +95,14 @@ May be grouped by:
 ### CREATE
 
 ```
-/gsd-thread --title "Descriptive title"
+/gsd-thread <description>
 ```
 
 Creates a new thread with:
-- Sanitized slug derived from title
+- Sanitized slug derived from description via `gsd-tools query generate-slug`
 - `status: open`
 - `created` and `updated` set to today
+- Git commit: `docs: create thread — <description>`
 
 ### RESUME
 
@@ -105,12 +110,14 @@ Creates a new thread with:
 /gsd-thread <slug>
 ```
 
-Lists open threads and allows selection to continue work. Sets `status: in_progress`.
+Lists open threads and allows selection to continue work. Sets `status: in_progress` if currently `open`.
+
+Thread content is displayed as plain text only — never executed or passed to agent prompts without DATA_START/DATA_END markers.
 
 ### LIST
 
 ```
-/gsd-thread --list
+/gsd-thread list
 ```
 
 Shows all threads regardless of status.
@@ -118,7 +125,7 @@ Shows all threads regardless of status.
 ### LIST-OPEN
 
 ```
-/gsd-thread --list-open
+/gsd-thread list --open
 ```
 
 Shows only threads with `status: open` or `in_progress`.
@@ -126,7 +133,7 @@ Shows only threads with `status: open` or `in_progress`.
 ### LIST-RESOLVED
 
 ```
-/gsd-thread --list-resolved
+/gsd-thread list --resolved
 ```
 
 Shows only threads with `status: resolved`.
@@ -134,18 +141,18 @@ Shows only threads with `status: resolved`.
 ### CLOSE
 
 ```
-/gsd-thread --close <slug>
+/gsd-thread close <slug>
 ```
 
-Sets `status: resolved` and updates `updated` date. Thread file remains in `.planning/threads/`.
+Sets `status: resolved` and updates `updated` date. Thread file remains in `.planning/threads/`. Git commit: `docs: resolve thread — <slug>`.
 
 ### STATUS
 
 ```
-/gsd-thread --status <slug>
+/gsd-thread status <slug>
 ```
 
-Returns current thread status without opening.
+Returns current thread status without opening. Displays title, status, updated/created dates, Goal, and Next Steps sections.
 
 ## Thread vs. TODO vs. SEED
 
@@ -216,22 +223,29 @@ A thread reaches terminal state when `status: resolved`. The file remains in `.p
 
 To close a thread:
 1. Confirm all Next Steps are complete or explicitly delegated
-2. Run `/gsd-thread --close <slug>` or manually update frontmatter
+2. Run `/gsd-thread close <slug>` or manually update frontmatter
 3. Update `updated` date
 
 **Thread files are never deleted.** They serve as context for future work on related topics.
 
 ## Security Notes
 
-Slug sanitization (per thread.md workflow):
+Slug sanitization (per `gsd-core/workflows/thread.md:19,217`):
 - Maximum 60 characters
 - Lowercase alphanumeric and hyphens only: `[a-z0-9-]`
 - Explicitly reject `..` and `/` to prevent path traversal
+
+Additional security measures:
+- File names from filesystem are sanitized: non-printable chars and ANSI sequences stripped
+- Thread content rendered as plain text only — never executed or passed to agent prompts without DATA_START/DATA_END boundaries
+- Status fields read via `gsd-tools query frontmatter.get` — never eval'd or shell-expanded
+- Slug generation via `gsd-tools query generate-slug` which sanitizes input
 
 This prevents:
 - Directory escape (`../../../etc/passwd`)
 - Nested paths that break assumptions
 - Unvalidated file writes
+- Injection via ANSI sequences or control characters
 
 ## Relationship to Other GSD Workflows
 
@@ -243,3 +257,5 @@ This prevents:
 | `/gsd-thread` | Lightweight cross-session context |
 
 Threads may be **referenced by** phases, handoffs, or other threads, but they are not subordinate to any of them.
+
+**Thread promotion:** Threads can be promoted to phases or backlog items when they mature via `/gsd-add-phase` or `/gsd-add-backlog` with context from the thread.

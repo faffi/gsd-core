@@ -1,5 +1,9 @@
 # GSD Knowledge-Capability Reference — Steady State
 
+> **Generated:** 2026-08-21T23:20:00Z
+> **GSD version:** 1.11.0-58-g026e2a73
+> **Source:** gsd-core/src/intel.cts, gsd-core/src/graphify.cts, gsd-core/bin/lib/capability-registry.cjs
+
 **Scope:** project-agnostic. Applies to any GSD-managed repo.
 **Derived from:** gsd-core `next` @ `2b9713a6` (v1.10.0). File:line refs are to the gsd-core source
 repo unless prefixed `~/.claude/` (the installed copy).

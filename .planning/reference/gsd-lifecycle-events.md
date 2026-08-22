@@ -1,5 +1,9 @@
 # GSD Lifecycle Events
 
+> **Generated:** 2026-08-21T23:15:00Z
+> **GSD version:** 1.11.0-58-g026e2a73
+> **Source:** gsd-core/bin/lib/capability-registry.cjs
+
 <purpose>
 Reference documentation for GSD's hook-based lifecycle events — which points fire on which
 workflows, what capabilities register hooks at each point, and how the dispatch contract works.
@@ -9,12 +13,11 @@ workflows, what capabilities register hooks at each point, and how the dispatch 
 
 GSD workflows expose extension points called "hook points" where capabilities can inject behavior.
 Hooks are resolved via the capability registry and dispatched by the loop host. All hooks follow
-a common dispatch contract defined in `loop-hook-dispatch.md`.
+a common dispatch contract.
 
 **Key locations:**
-- Capability registry: `~/.claude/gsd-core/bin/lib/capability-registry.cjs`
-- Dispatch contract: `~/.claude/gsd-core/references/loop-hook-dispatch.md`
-- Loop resolver: `~/.claude/gsd-core/bin/lib/loop-resolver.cjs`
+- Capability registry: `gsd-core/bin/lib/capability-registry.cjs`
+- Loop resolver: `gsd-core/bin/lib/loop-resolver.cjs`
 
 ## Hook Points
 
@@ -46,8 +49,7 @@ All hooks share a common envelope shape:
 {
   "point": "ship:pre",
   "activeHooks": [
-    { "kind": "gate", "check": { "predicate": {...} }, "blocking": true, "onError": "halt" },
-    { "kind": "step", "ref": { "agent": "gsd-mempalace-curator" }, "onError": "skip" }
+    { "kind": "gate", "check": { "predicate": {...} }, "blocking": true, "onError": "halt" }
   ],
   "rendered": "..."
 }
@@ -73,24 +75,370 @@ All hooks share a common envelope shape:
 Hooks are resolved via the capability registry:
 
 ```bash
-gsd_run loop render-hooks ship:pre --raw
+gsd-tools loop render-hooks ship:pre --raw
 ```
 
 Output is JSON with `activeHooks` array containing only hooks whose `when` condition evaluates true.
 
-## `/gsd-ship` Lifecycle Events
+## `/gsd-discuss-phase` Lifecycle Events
 
-The ship workflow has two hook points with distinct semantics:
+No hooks registered at either `disc:pre` or `discuss:post` in this version.
 
-### `ship:pre` — Gates Executed Before PR Creation
+## `/gsd-plan-phase` Lifecycle Events
+
+### `plan:pre` — Steps Executed Before Planning
 
 **Resolution:**
 
 ```bash
-SHIP_PRE_HOOKS_JSON=$(gsd_run loop render-hooks ship:pre --raw)
+PLAN_PRE_HOOKS_JSON=$(gsd-tools loop render-hooks plan:pre --raw)
 ```
 
 Read `activeHooks` array from the JSON response.
+
+#### AI Integration Phase Step
+
+**Capability:** `ai-integration`
+
+**When active:** `workflow.ai_integration_phase = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "skill": "ai-integration-phase" },
+  "when": "workflow.ai_integration_phase",
+  "produces": ["AI-SPEC.md"],
+  "consumes": ["CONTEXT.md"],
+  "onError": "skip"
+}
+```
+
+**Behavior:** Dispatches `ai-integration-phase` skill to produce AI-SPEC.md.
+
+#### Pattern Mapper Step
+
+**Capability:** `pattern-mapper`
+
+**When active:** `workflow.pattern_mapper = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "agent": "gsd-pattern-mapper" },
+  "when": "workflow.pattern_mapper",
+  "onError": "skip"
+}
+```
+
+**Behavior:** Dispatches `gsd-pattern-mapper` agent.
+
+#### Research Step
+
+**Capability:** `research`
+
+**When active:** `workflow.research = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "agent": "gsd-phase-researcher" },
+  "when": "workflow.research",
+  "produces": ["RESEARCH.md"],
+  "consumes": ["CONTEXT.md"],
+  "onError": "skip"
+}
+```
+
+**Behavior:** Dispatches `gsd-phase-researcher` agent to produce RESEARCH.md.
+
+#### UI Phase Step
+
+**Capability:** `ui`
+
+**When active:** `workflow.ui_phase = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "skill": "ui-phase" },
+  "when": "workflow.ui_phase",
+  "produces": ["UI-SPEC.md"],
+  "consumes": ["CONTEXT.md"],
+  "onError": "skip"
+}
+```
+
+**Behavior:** Dispatches `ui-phase` skill to produce UI-SPEC.md.
+
+### `plan:post` — Gate Executed After Planning
+
+**Resolution:**
+
+```bash
+PLAN_POST_HOOKS_JSON=$(gsd-tools loop render-hooks plan:post --raw)
+```
+
+#### Gap Analysis Gate
+
+**Capability:** `gap-analysis`
+
+**When active:** `workflow.post_planning_gaps = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "gate",
+  "when": "workflow.post_planning_gaps",
+  "check": { "query": "gap-analysis.plan-post" },
+  "blocking": false,
+  "onError": "skip"
+}
+```
+
+**Behavior:** Non-blocking gate that checks for planning gaps. Surfaces warning but never blocks.
+
+## `/gsd-execute-phase` Lifecycle Events
+
+### `execute:pre` — No Hooks Registered
+
+### `execute:wave:pre` — No Hooks Registered
+
+### `execute:wave:post` — Gates Executed After Each Wave
+
+**Resolution:**
+
+```bash
+WAVE_POST_HOOKS_JSON=$(gsd-tools loop render-hooks execute:wave:post --raw)
+```
+
+#### Schema Drift Gate (Blocking)
+
+**Capability:** `drift`
+
+**When active:** `workflow.schema_drift_gate = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "gate",
+  "when": "workflow.schema_drift_gate",
+  "check": { "query": "verify.schema-drift" },
+  "blocking": true,
+  "onError": "skip"
+}
+```
+
+**Behavior:** Blocking gate that halts execution if schema drift is detected.
+
+#### Codebase Drift Gate (Non-blocking)
+
+**Capability:** `drift`
+
+**When active:** `workflow.schema_drift_gate = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "gate",
+  "when": "workflow.schema_drift_gate",
+  "check": { "query": "verify.codebase-drift" },
+  "blocking": false,
+  "onError": "skip"
+}
+```
+
+**Behavior:** Non-blocking gate that warns about codebase drift but continues.
+
+#### UI Safety Gate (Blocking)
+
+**Capability:** `ui`
+
+**When active:** `workflow.ui_safety_gate = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "gate",
+  "when": "workflow.ui_safety_gate",
+  "check": { "query": "ui.safety-gate" },
+  "blocking": true,
+  "onError": "halt"
+}
+```
+
+**Behavior:** Blocking gate that halts execution on UI safety violations.
+
+### `execute:post` — Steps and Gates After Execution
+
+**Resolution:**
+
+```bash
+EXECUTE_POST_HOOKS_JSON=$(gsd-tools loop render-hooks execute:post --raw)
+```
+
+#### Code Review Step
+
+**Capability:** `code-review`
+
+**When active:** `workflow.code_review = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "skill": "code-review" },
+  "when": "workflow.code_review",
+  "produces": ["REVIEW.md"],
+  "consumes": ["SUMMARY.md"],
+  "onError": "skip"
+}
+```
+
+**Behavior:** Dispatches `code-review` skill to produce REVIEW.md.
+
+#### TDD Review Checkpoint Gate
+
+**Capability:** `tdd`
+
+**When active:** `workflow.tdd_mode = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "gate",
+  "when": "workflow.tdd_mode",
+  "check": { "query": "tdd.review-checkpoint" },
+  "blocking": false,
+  "onError": "skip"
+}
+```
+
+**Behavior:** Non-blocking gate that validates TDD mode checkpoint.
+
+## `/gsd-validate-phase` Lifecycle Events
+
+### `verify:pre` — Gate Executed Before Verification
+
+**Resolution:**
+
+```bash
+VERIFY_PRE_HOOKS_JSON=$(gsd-tools loop render-hooks verify:pre --raw)
+```
+
+#### API Coverage Gate (Blocking)
+
+**Capability:** `ai-integration`
+
+**When active:** `workflow.api_coverage_gate = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "gate",
+  "when": "workflow.api_coverage_gate",
+  "check": { "query": "api-coverage.verify-pre" },
+  "blocking": true,
+  "onError": "halt"
+}
+```
+
+**Behavior:** Blocking gate that requires COVERAGE.md for API-integrating phases.
+
+### `verify:post` — Steps Executed After Verification
+
+**Resolution:**
+
+```bash
+VERIFY_POST_HOOKS_JSON=$(gsd-tools loop render-hooks verify:post --raw)
+```
+
+#### Nyquist Validation Step
+
+**Capability:** `nyquist`
+
+**When active:** `workflow.nyquist_validation = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "skill": "validate-phase" },
+  "when": "workflow.nyquist_validation",
+  "produces": ["VALIDATION.md"],
+  "consumes": ["SUMMARY.md"],
+  "onError": "halt"
+}
+```
+
+**Behavior:** Dispatches `validate-phase` skill to produce VALIDATION.md.
+
+#### Security Phase Step
+
+**Capability:** `security`
+
+**When active:** `workflow.security_enforcement = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "skill": "secure-phase" },
+  "when": "workflow.security_enforcement",
+  "produces": ["SECURITY.md"],
+  "consumes": ["SUMMARY.md"],
+  "onError": "halt"
+}
+```
+
+**Behavior:** Dispatches `secure-phase` skill to produce SECURITY.md.
+
+#### UI Review Step
+
+**Capability:** `ui`
+
+**When active:** `workflow.ui_review = true`
+
+**Hook definition:**
+
+```json
+{
+  "kind": "step",
+  "ref": { "skill": "ui-review" },
+  "when": "workflow.ui_review",
+  "produces": ["UI-REVIEW.md"],
+  "consumes": ["UI-SPEC.md"],
+  "onError": "skip"
+}
+```
+
+**Behavior:** Dispatches `ui-review` skill to produce UI-REVIEW.md.
+
+## `/gsd-ship` Lifecycle Events
+
+### `ship:pre` — Gate Executed Before PR Creation
+
+**Resolution:**
+
+```bash
+SHIP_PRE_HOOKS_JSON=$(gsd-tools loop render-hooks ship:pre --raw)
+```
 
 #### Security Enforcement Gate
 
@@ -102,7 +450,6 @@ Read `activeHooks` array from the JSON response.
 
 ```json
 {
-  "point": "ship:pre",
   "kind": "gate",
   "check": {
     "predicate": {
@@ -141,200 +488,9 @@ Read `activeHooks` array from the JSON response.
 | `workflow.security_asvs_level` | number | `1` | OWASP ASVS level for security review |
 | `workflow.security_block_on` | enum | `"high"` | Minimum threat severity that blocks |
 
-#### Broken-Windows Ledger Gate
+### `ship:post` — No Hooks Registered
 
-**Capability:** `broken-windows`
-
-**When active:** `workflow.windows_enforce = true` (default: `false` — opt-in)
-
-**Hook definition:**
-
-```json
-{
-  "point": "ship:pre",
-  "kind": "gate",
-  "check": {
-    "predicate": {
-      "kind": "artifact-frontmatter-equals",
-      "artifact": "WINDOWS.md",
-      "field": "open_count",
-      "equals": 0
-    }
-  },
-  "blocking": true,
-  "onError": "halt"
-}
-```
-
-**Behavior:**
-
-1. Read ledger status: `gsd_run windows status --raw`
-2. Extract `ledger.open_count`
-3. If `open_count == 0` → gate passes; continue
-4. If `open_count > 0` → block with `WINDOWS_SHIP_GATE_OPEN`:
-   ```
-   ⚠ Broken-windows ship gate: WINDOWS.md has {open_count} open window(s).
-   Resolve each entry before shipping, or explicitly waive with a recorded reason:
-     gsd_run windows fixed <id>      # defect resolved
-     gsd_run windows waive <id> "<reason>"   # justified deferral (reason required)
-   Then re-run /gsd-ship.
-   ```
-5. If `open_count` is `"?"`, empty, or non-numeric → **fail closed** with `WINDOWS_SHIP_GATE_READ_FAILED`:
-   ```
-   ⚠ Broken-windows ship gate: could not read open_count from .planning/WINDOWS.md.
-   Inspect the file or run `gsd_run windows status --raw` to diagnose. The ledger
-   may be malformed; fix it before shipping (an unparseable ledger is a broken window).
-   ```
-
-**Ledger is optional and backward-compatible:** If `WINDOWS.md` doesn't exist or is empty,
-the gate passes silently. The gate only blocks when at least one entry is `open`.
-
-**Config control:**
-
-| Config key | Type | Default | Description |
-|------------|------|---------|-------------|
-| `workflow.windows_enforce` | boolean | `false` | Enable blocking ship:pre gate for broken-windows |
-
-**Manual commands:**
-
-```bash
-# Mark a window as resolved
-gsd-tools windows fixed <id>
-
-# Waive with recorded reason (deferral)
-gsd-tools windows waive <id> "Not blocking current milestone; tracked for follow-up"
-
-# Check ledger status
-gsd-tools windows status --raw
-```
-
-#### TDD Audit Trail Reconstruction
-
-**Not a capability hook** — this is inline behavior in the ship workflow.
-
-**Behavior:**
-
-1. Walk PR branch commits (merges excluded) via:
-   ```bash
-   RANGE_BASE=$(git merge-base "${BASE_BRANCH}" HEAD)
-   git log "${RANGE_BASE}..HEAD" --no-merges --reverse \
-     --format='%H%x1f%s%x1f%(trailers:key=gate_status,valueonly,separator=%x2c)%x1e'
-   ```
-
-2. Pair commits by conventional-commit type:
-   - `test:` commit → RED row, paired with next `feat:` or `fix:` as Impl commit
-   - `refactor:`, `docs:`, `chore:` → standalone rows with Impl commit `—`
-   - `feat:`/`fix:` without preceding `test:` → standalone rows
-
-3. Normalize `gate_status:` values to: `skill`, `fallback`, `exempt`, `missing`
-
-4. **Self-suppress when 100% missing:** If every commit normalizes to `missing`, skip the entire section — TDD mode was off, so the table would be pure noise.
-
-5. Emit `## TDD Audit` section in PR body with table and aggregate trailer on final line:
-   ```
-   gate_status: skill=2, fallback=1, exempt=1, missing=0
-   ```
-
-**This section is informational only** — it never blocks the ship.
-
-### `ship:post` — Steps Executed After PR Creation
-
-**Resolution:**
-
-```bash
-SHIP_POST_HOOKS_JSON=$(gsd_run loop render-hooks ship:post --raw)
-```
-
-Read `activeHooks` array from the JSON response.
-
-#### MemPalace Curation
-
-**Capability:** `mempalace`
-
-**When active:** `mempalace.enabled = true` (default: `false`)
-
-**Hook definition:**
-
-```json
-{
-  "point": "ship:post",
-  "kind": "step",
-  "ref": {
-    "agent": "gsd-mempalace-curator"
-  },
-  "consumes": ["UAT.md"],
-  "onError": "skip"
-}
-```
-
-**Agent:** `gsd-mempalace-curator`
-
-**Consumes:** `UAT.md`
-
-**Behavior:**
-
-The agent executes four independent tasks, each best-effort:
-
-1. **Diary entry** (when `mempalace.diary_journal = true`)
-   - Write one concise per-phase diary entry
-   - Tool: `mempalace_diary_write(agent_name=<project>/<role>, entry=<summary>, topic="phase-ship", wing=<wing>)`
-   - **Idempotency:** Check for existing entry keyed by `(wing, agent_name, topic, phase-id)` and update in place
-
-2. **extract-learnings → KG mirror** (when `mempalace.mirror_kg = true`)
-   - For each decision/lesson/pattern/surprise from phase learnings, add typed KG triple
-   - Include provenance (`source_file`, `source_drawer_id`) and `valid_from` = phase date
-   - **Idempotency:** Query for existing triple `(subject, predicate, object)` first; skip if exists with same `valid_from`
-   - Superseded decisions: call `mempalace_kg_invalidate` to set `valid_to` rather than delete
-
-3. **Cross-project tunnels** (when `mempalace.cross_project_tunnels = true`)
-   - Use `mempalace_find_tunnels` to surface related wings
-   - Create tunnel only for connections with justification
-   - **Idempotency:** Check `find_tunnels` result and skip if tunnel already exists
-
-4. **Wing-scoped prune** (optional)
-   - Run `mempalace sync --wing <wing> --apply` to prune drawers whose source artifacts were archived/deleted
-   - **NEVER** run global sync/prune — always pass `--wing`
-
-**Error handling:** `onError: skip` — any failure logs a warning but never fails the ship step.
-
-**Hard rules enforced by agent:**
-
-- Best-effort only — never propagate an error that would fail `ship:post`
-- Wing-scoped only — never read, write, or prune outside this project's wing
-- Verbatim preservation — invalidate superseded facts (set `valid_to`); do not destroy history
-- Idempotent — re-running a shipped phase must not duplicate entries, facts, or tunnels
-
-**Report:** Emit short summary: "diary (yes/no), KG facts mirrored (count), tunnels proposed/created (count), drawers pruned (count)" or "MemPalace unavailable — curation skipped"
-
-**Config controls:**
-
-| Config key | Type | Default | Description |
-|------------|------|---------|-------------|
-| `mempalace.enabled` | boolean | `false` | Master toggle for MemPalace capability |
-| `mempalace.memory_mode` | enum | `"augment"` | How palace relates to native memory (`augment` / `kg_backend` / `replace`) |
-| `mempalace.wing` | string | `""` | Palace wing name (empty derives from `project_code` or dir) |
-| `mempalace.diary_journal` | boolean | `true` | Write per-agent diary entry at `ship:post` |
-| `mempalace.mirror_kg` | boolean | `true` | Mirror decisions/learnings into temporal KG |
-| `mempalace.cross_project_tunnels` | boolean | `false` | Propose/create cross-wing tunnels at `ship:post` |
-
-### Runtime-Aware Dispatch
-
-Before dispatching the agent, resolve its dispatch type for the current runtime:
-
-```bash
-DISPATCH_TYPE=$(gsd_run query resolve-dispatch-type --requested gsd-mempalace-curator --raw)
-```
-
-On Claude/OpenCode/named-dispatch runtimes, returns `"gsd-mempalace-curator"`.
-On kimi-code (built-ins-only runtime), maps to `"coder"` / `"explore"` / `"plan"` by role-suffix.
-
-**Model resolution:**
-
-```bash
-HOOK_AGENT_MODEL=$(gsd_run query resolve-model "gsd-mempalace-curator" --raw 2>/dev/null || true)
-```
-
-Omit `model=` parameter entirely when resolved model is `inherit` or empty (prevents 404 on non-Claude runtimes).
+No hooks registered at `ship:post` in this version.
 
 ## `/gsd-pr-branch` Lifecycle Events
 
@@ -363,50 +519,24 @@ without dispatching capability hooks.
    ```
 5. **Verify:** Confirm no transient `.planning/` files in PR branch
 
-### Sub-Repo Handling
-
-When `planning.sub_repos` is configured and dirty repos are detected:
-
-```
-Sub-repos with uncommitted changes:
-  backend
-  frontend
-
-How should sub-repo changes be handled?
-  1. all    — branch, commit (explicit files only), push -u, open companion PR per repo
-  2. select — choose which sub-repos to process
-  3. skip   — ignore sub-repos, continue with root repo only
-```
-
-All sub-repo git work happens via the `pr-subrepo` query seam — it validates paths through
-symlinks, stages explicit files only, and runs git in a containment-checked directory.
-
 ## Hook Point Summary
 
 | Workflow | Hook Points | Active Hooks |
 |----------|-------------|--------------|
-| `/gsd-ship` | `ship:pre`, `ship:post` | Security gate, broken-windows gate (opt-in), MemPalace curation (opt-in) |
+| `/gsd-discuss-phase` | `discuss:pre`, `discuss:post` | None |
+| `/gsd-plan-phase` | `plan:pre`, `plan:post` | AI integration, pattern mapper, research, UI, gap analysis |
+| `/gsd-execute-phase` | `execute:pre`, `execute:wave:pre`, `execute:wave:post`, `execute:post` | Drift gates, UI safety gate, code review, TDD checkpoint |
+| `/gsd-validate-phase` | `verify:pre`, `verify:post` | API coverage gate, Nyquist, security, UI review |
+| `/gsd-ship` | `ship:pre`, `ship:post` | Security gate |
 | `/gsd-pr-branch` | None | — |
-| `/gsd-discuss-phase` | `discuss:pre`, `discuss:post` | MemPalace recall/capture (opt-in) |
-| `/gsd-plan-phase` | `plan:pre`, `plan:post` | AI integration, API coverage, MemPalace recall/capture (opt-in) |
-| `/gsd-execute-phase` | `execute:pre`, `execute:wave:pre`, `execute:wave:post`, `execute:post` | MemPalace capture (opt-in) |
-| `/gsd-validate-phase` | `verify:pre`, `verify:post` | API coverage gate, security audit (opt-in), MemPalace capture (opt-in) |
 
 ## CLI Commands for Hook Inspection
 
 ```bash
 # Resolve active hooks at a point
+gsd-tools loop render-hooks plan:pre --raw
+gsd-tools loop render-hooks execute:wave:post --raw
 gsd-tools loop render-hooks ship:pre --raw
-gsd-tools loop render-hooks ship:post --raw
-
-# Check broken-windows ledger status
-gsd-tools windows status --raw
-
-# Mark window as resolved
-gsd-tools windows fixed <id>
-
-# Waive window with reason
-gsd-tools windows waive <id> "Tracked for follow-up"
 
 # Resolve dispatch type for runtime
 gsd-tools query resolve-dispatch-type --requested gsd-mempalace-curator --raw
@@ -417,10 +547,5 @@ gsd-tools query resolve-model gsd-mempalace-curator --raw
 
 ## References
 
-- Capability registry: `~/.claude/gsd-core/bin/lib/capability-registry.cjs`
-- Loop hook dispatch: `~/.claude/gsd-core/references/loop-hook-dispatch.md`
-- Ship workflow: `~/.claude/gsd-core/workflows/ship.md`
-- PR-branch workflow: `~/.claude/gsd-core/workflows/pr-branch.md`
-- MemPalace curator agent: `~/.claude/agents/gsd-mempalace-curator.md`
-- Loop host contract: `~/.claude/gsd-core/bin/lib/loop-host-contract.cjs`
-- Loop resolver: `~/.claude/gsd-core/bin/lib/loop-resolver.cjs`
+- Capability registry: `gsd-core/bin/lib/capability-registry.cjs`
+- Loop resolver: `gsd-core/bin/lib/loop-resolver.cjs`

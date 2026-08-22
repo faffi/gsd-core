@@ -1,5 +1,9 @@
 # GSD `.planning/config.json` — merged key reference
 
+> **Generated:** 2026-08-21T23:20:00Z
+> **GSD version:** 1.11.0-58-g026e2a73
+> **Source:** gsd-core/bin/shared/config-schema.manifest.json, gsd-core/bin/lib/capability-registry.cjs
+
 > **Generated file — do not hand-edit.** Regenerate with
 > `node scripts/gen-gsd-config-schema.cjs`, then diff.
 

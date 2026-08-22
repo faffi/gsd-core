@@ -1,5 +1,9 @@
 # Shell-fence portability — bash-authored fences execute under the user's login shell
 
+> **Generated:** 2026-08-21T23:20:00Z
+> **GSD version:** 1.11.0-58-g026e2a73
+> **Source:** gsd-core/workflows/*.md, agents/*.md, commands/*.md, skills/*.md (fence sweep)
+
 **Status: OPEN.** No fix landed. This document is the whole picture; the actionable item is
 `.planning/todos/pending/2026-08-21-zsh-array-index-guards-silently-read-nothing.md`.
 

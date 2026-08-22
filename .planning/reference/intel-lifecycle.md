@@ -1,5 +1,9 @@
 # Intel System Lifecycle
 
+> **Generated:** 2026-08-21T23:25:00Z
+> **GSD version:** 1.11.0-58-g026e2a73
+> **Source:** `src/intel.cts`, `gsd-core/bin/lib/intel.cjs`, `gsd-core/bin/lib/intel-command-router.cjs`, `agents/gsd-intel-updater.md`
+
 <purpose>
 Reference documentation for GSD's queryable codebase intelligence system — how it's
 configured, populated, updated, and consumed by other GSD features.
@@ -424,7 +428,7 @@ than grepping the codebase and avoids false negatives from grep patterns.
 
 ### Agent Spawning
 
-The `gsd-intel-updater` agent is defined in `~/.claude/agents/gsd-intel-updater.md`:
+The `gsd-intel-updater` agent is defined in `agents/gsd-intel-updater.md`:
 
 - **Tools:** Read, Write, Bash, Glob, Grep
 - **Color:** cyan
@@ -538,7 +542,7 @@ If JSON is malformed: `gsd-tools intel validate` reports `invalid JSON`.
 
 If `_meta.updated_at` >24 hours: `gsd-tools intel validate` warns about staleness.
 
-**Recovery:** Re-run `/gsd-tools intel status` to check staleness, then
+**Recovery:** Re-run `gsd-tools intel status` to check staleness, then
 `/gsd-map-codebase --query` to refresh.
 
 ### Missing Exports
@@ -561,11 +565,43 @@ Returns:
 
 **Recovery:** Fix the entry manually or re-run the intel updater.
 
+## Implementation Notes
+
+### ADR-457: TypeScript Source of Truth
+
+Per `src/intel.cts:11-14`, the hand-written `bin/lib/intel.cjs` collapsed to a
+TypeScript source of truth (`src/intel.cts`). The compiled `.cjs` is generated
+at publish time. Behaviour is preserved byte-for-behaviour from the prior
+hand-written `.cjs`; only types are added.
+
+### Constants
+
+From `src/intel.cts:27-35`:
+
+```typescript
+const INTEL_DIR = '.planning/intel';
+
+const INTEL_FILES: Record<string, string> = {
+  files: 'file-roles.json',
+  apis: 'api-map.json',
+  deps: 'dependency-graph.json',
+  arch: 'arch-decisions.json',
+  stack: 'stack.json',
+};
+```
+
+### Command Router
+
+The `intel-command-router.cjs` dispatches CLI subcommands via the Command Routing Hub
+(ADR-959). It supports 9 subcommands: `api-surface`, `diff`, `extract-exports`,
+`patch-meta`, `query`, `snapshot`, `status`, `update`, `validate`.
+
+Test seams: `_intel` and `_core` parameters allow injection of mock modules for testing.
+
 ## References
 
-- Agent definition: `~/.claude/agents/gsd-intel-updater.md`
-- Core implementation: `~/.claude/gsd-core/bin/lib/intel.cjs`
-- Command router: `~/.claude/gsd-core/bin/lib/intel-command-router.cjs`
-- Config schema: `~/.claude/gsd-core/references/planning-config.md`
-- Settings workflow: `~/.claude/gsd-core/workflows/settings.md`
-- Capability resolver: `~/.claude/gsd-core/bin/lib/capability-state.cjs`
+- Agent definition: `agents/gsd-intel-updater.md`
+- Core implementation: `src/intel.cts` (TypeScript source of truth)
+- Compiled module: `gsd-core/bin/lib/intel.cjs`
+- Command router: `gsd-core/bin/lib/intel-command-router.cjs`
+- Capability resolver: `gsd-core/bin/lib/capability-state.cjs`

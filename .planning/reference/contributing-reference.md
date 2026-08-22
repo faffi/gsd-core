@@ -1,5 +1,9 @@
 # gsd-core contribution reference (local, untracked)
 
+> **Generated:** 2026-08-21T23:20:00Z
+> **GSD version:** 1.11.0-58-g026e2a73
+> **Source:** CONTRIBUTING.md (this repo)
+
 **Purpose.** A distilled, line-cited index of every rule in `CONTRIBUTING.md` that can close a PR,
 fail CI, or waste work — plus the local-machine gotchas that CI cannot see.
 
