@@ -91,9 +91,16 @@ entries, so none of this can reach a contribution branch.
 | `runbooks/` | Do these steps, in this order. | plain, undated | **a bug** — the steps are wrong |
 | `seeds/` | A proposal awaiting a decision, with a trigger condition. | **`SEED-NNN-<slug>.md`** | n/a — it hasn't happened yet |
 | `todos/pending/` | An actionable work item with a severity. | `YYYY-MM-DD-<slug>.md` | n/a — close it or it's still true |
+| `notes/` | Working material for **one open todo** — scratch, measurements, options being weighed. Not a second home for anything the five above own. | `<todo-slug>-WORKING.md` — the todo's own slug, so the pair is greppable | n/a — it dies with the todo. Fold the durable findings into that todo's resolution and delete, or move to `archive/`. |
 
 Start here for procedure: **`.planning/runbooks/fork-install-and-update.md`** — how to
 build, install, and update from this fork, and why `/gsd-update` must never be run.
+
+**`notes/` lives on the fix branch, not here.** A working file belongs on the `local/<slug>`
+branch doing the work, because `.planning/` is blanket-ignored on `next` — so on any branch cut
+from `next` those files vanish from disk, and a working file you cannot read while working is
+useless. It dies with the branch; that is correct. The durable residue goes into the todo's
+resolution section, which lives on `local/track-planning-history` and survives.
 
 **The distinction that matters:** `reference/` claims to be true *now*, `research/` claims
 only to have been true *on its stated date against its stated version*. Never promote a
