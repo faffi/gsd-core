@@ -3,6 +3,8 @@ created: 2026-08-20T23:17:00.000Z
 title: Port 4.7 — review-lane timeouts 540s→1800s (MOSTLY INERT AS SPECIFIED)
 area: tooling
 severity: major
+scope: Small
+scope_note: One value change plus a required companion prose edit and four literal-asserting tests to update, all mechanical; no failure story yet so consider deferring entirely
 files:
   - src/review-lane-descriptor.cts:422-434 (THE ONLY FILE WITH RUNTIME EFFECT)
   - capabilities/antigravity/capability.json:121 (provably DEAD for dispatch — keep for validator consistency only)

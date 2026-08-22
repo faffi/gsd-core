@@ -3,6 +3,8 @@ created: 2026-08-20T23:18:00.000Z
 title: Port 4.8 — convergence max-cycles 3→5 and route to gsd-review-concurrent
 area: tooling
 severity: major
+scope: Medium
+scope_note: Splits into two commits — max-cycles bump is Small alone, but the routing half is blocked on the local-only-skills-destroyed todo and needs a stale-checklist fix
 files:
   - gsd-core/workflows/plan-review-convergence.md:31 (the ONE runtime-authoritative max-cycles site)
   - gsd-core/workflows/plan-review-convergence.md:453,462 (stale success-criteria checklist — REQUIRED edit)

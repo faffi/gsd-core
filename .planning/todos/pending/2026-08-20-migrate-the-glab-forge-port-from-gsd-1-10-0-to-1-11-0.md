@@ -3,6 +3,8 @@ created: 2026-08-20T03:42:57.000Z
 title: Fix the inert glab forge port and migrate it from GSD 1.10.0 to 1.11.0
 area: tooling
 severity: blocker
+scope: Large
+scope_note: Needs an empirical spike to resolve an unverified GitLab field mapping, one hand-written hunk, a fence-scoping redesign for the FORGE fail-open defect, and a full move off the patch-file mechanism
 files:
   - gsd-core/workflows/ship.md:90 (auth — stable across versions)
   - gsd-core/workflows/ship.md:364 (was :338 at 1.10.0 — gh pr create)

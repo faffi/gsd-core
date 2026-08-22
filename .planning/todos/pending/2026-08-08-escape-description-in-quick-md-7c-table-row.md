@@ -3,6 +3,8 @@ created: 2026-08-08T11:57:14Z
 title: Escape ${DESCRIPTION} in quick.md step 7c table row
 area: tooling
 severity: blocker
+scope: Small
+scope_note: Option 1 is a single doc instruction edit; option 2 is the preferred fix but is coupled with the reconcile-hash-column todo and should land second
 files:
   - gsd-core/workflows/quick.md:613 (step "7c. Append new row to table:")
   - gsd-core/workflows/quick.md:619 (VALIDATE_MODE 6-column row template)

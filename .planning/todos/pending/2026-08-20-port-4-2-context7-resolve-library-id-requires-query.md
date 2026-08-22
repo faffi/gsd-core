@@ -3,6 +3,8 @@ created: 2026-08-20T23:11:00.000Z
 title: Port 4.2 — context7 resolve-library-id requires query as well as libraryName
 area: tooling
 severity: major
+scope: Small
+scope_note: 3 doc-only files, already validated against the live tool schema, splits cleanly into two commits, no runtime risk
 files:
   - agents/gsd-advisor-researcher.md (stale libraryName-only call signature)
   - agents/gsd-executor.md (call signature + the mcp__plugin_context7_context7__* judgement call)

@@ -3,6 +3,8 @@ created: 2026-08-20T22:20:00.000Z
 title: Body-only STATE.md writes resync progress frontmatter from disk
 area: tooling
 severity: blocker
+scope: Large
+scope_note: 17 call sites audited, 3 fix options (point/class/invert-default) with the robust one being a default inversion across the whole write path
 files:
   - src/state.cts:3407 (readModifyWriteStateMd — `const resync = !options || options.resync !== false`)
   - src/state.cts:3396-3402 (the docstring naming this exact hazard, citing #3242 Bug A)

@@ -3,6 +3,8 @@ created: 2026-08-20T21:10:00.000Z
 title: Build a handoff skill that merges rather than regenerates
 area: tooling
 severity: major
+scope: Medium
+scope_note: New skill via skill-creator scaffolding, but four open design questions plus a merge algorithm and a verify step still need real design work first
 build_with: skill-creator (Anthropic skill)
 files:
   - .planning/seeds/SEED-001-handoff-skill.md (the full spec — build from this)

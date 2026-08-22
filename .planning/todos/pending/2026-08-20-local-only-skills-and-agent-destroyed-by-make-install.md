@@ -3,6 +3,8 @@ created: 2026-08-20T23:40:00.000Z
 title: Two local-only skills and one agent are destroyed by make install
 area: tooling
 severity: blocker
+scope: Small
+scope_note: Mechanically a copy of 3 rescued files into the repo plus a commit on a local branch; the effectiveness-validation question for 2 of them is explicitly deferrable
 files:
   - bin/install.js:10820-10829 (the stale-skills wipe — readdir skills/, rmSync every dir starting with "gsd-")
   - skills/gsd-review-concurrent/ (DOES NOT EXIST HERE — the real home; 217 lines, referenced by port concern 4.8)

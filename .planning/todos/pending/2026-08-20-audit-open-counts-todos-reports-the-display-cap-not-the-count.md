@@ -3,6 +3,8 @@ created: 2026-08-20T21:45:00.000Z
 title: audit-open counts.todos reports the display cap, not the count
 area: tooling
 severity: major
+scope: Small
+scope_note: Recommended fix (option 1, count before slicing) mirrors an existing in-file pattern (scanContextQuestions) — one function, small diff
 files:
   - src/audit.cts:743 (scanTodos — openFiles.slice(0, 5), the display cap)
   - src/audit.cts:758-760 (pushes the _remainder_count sentinel row)

@@ -3,6 +3,8 @@ created: 2026-08-20T23:13:00.000Z
 title: Port 4.3b — graphify: seed-floor invariant REMOVED (highest risk, CI is blind)
 area: tooling
 severity: major
+scope: Large
+scope_note: Highest-risk item in the whole port campaign — the existing test suite is structurally blind to it, so a mandatory new adversarial RED test with a hand-built counterexample fixture is required, not optional
 files:
   - src/graphify.cts (the applyBudget rewrite — the sole behaviour-changing commit of the block)
   - tests/graphify-query.test.cjs:560 ("the seed set is a floor the reduction never goes below")

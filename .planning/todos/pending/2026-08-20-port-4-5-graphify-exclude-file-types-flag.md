@@ -3,6 +3,8 @@ created: 2026-08-20T23:15:00.000Z
 title: Port 4.5 — graphify --exclude-file-types (corpus membership vs retrieval eligibility)
 area: tooling
 severity: major
+scope: Medium
+scope_note: A real ~95-line new function plus router wiring and docs across two agent files; already well-validated, but the .graphifyignore rationale needs a citation before shipping upstream
 files:
   - src/graphify.cts (filterGraphByFileType ~95 lines — THE IMPLEMENTATION, omitted from an earlier draft)
   - src/graphify-command-router.cts (+33 — flag parsing and validation only)

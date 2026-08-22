@@ -3,6 +3,8 @@ created: 2026-08-22T02:20:00.000Z
 title: gsd-context-monitor warns subagents with the parent session's context usage, not their own
 area: hooks
 severity: major
+scope: Small
+scope_note: The fix is a single guard clause, already implemented and verified in the live install — porting it into this repo's own hooks/gsd-context-monitor.js is the same minimal diff
 files:
   - hooks/gsd-context-monitor.js:43-54 (session_id read, no agent_id check — reads the metrics file unconditionally)
   - hooks/gsd-context-monitor.js:74 (metricsPath keyed only by sessionId: `claude-ctx-${sessionId}.json`)

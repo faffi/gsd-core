@@ -3,6 +3,8 @@ created: 2026-08-21T02:30:00.000Z
 title: zsh glob guards in shipped fences abort the block on the common no-match path (11 sites; a 12th is an unrelated PIPESTATUS bug)
 area: tooling
 severity: blocker
+scope: Large
+scope_note: The single largest item in this list — 1048 fences swept, 4 new failure-mode families beyond the original scope, a mandatory cross-shell test harness parameterization, and multiple merge gates; blocks the port-4-10 todo
 files:
   - agents/gsd-planner.md:659-660,697-702 (4 guards — SUMMARY, CONTEXT, RESEARCH, DISCOVERY; NO nullglob shim)
   - agents/gsd-phase-researcher.md:548-549 (CONTEXT; no shim)

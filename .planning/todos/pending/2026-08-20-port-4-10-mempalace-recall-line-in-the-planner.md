@@ -3,6 +3,8 @@ created: 2026-08-20T23:19:00.000Z
 title: Port 4.10 — mempalace recall line in the planner (the only item that survived validation unchanged)
 area: tooling
 severity: minor
+scope: Small
+scope_note: One already-validated line insertion; blocked on the zsh-array-index-guards todo landing first, which is a dependency not an effort driver
 files:
   - agents/gsd-planner.md (+1 line — cat "$phase_dir"/*MEMORY-RECALL.md)
   - agents/gsd-planner.md:614 ($phase_dir binding — "Extract from init JSON")

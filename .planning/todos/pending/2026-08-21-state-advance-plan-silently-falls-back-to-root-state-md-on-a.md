@@ -3,6 +3,8 @@ created: 2026-08-21T22:34:56.330Z
 title: state advance-plan silently falls back to root STATE.md on a dangling active-workstream pointer
 area: tooling
 severity: blocker
+scope: Small
+scope_note: Two narrow, localized fixes (surface the fallback in the response, assert statePath matches what was requested) plus a quick scope-check on workstream complete — no sweep required
 files:
   - src/state.cts:657 (cmdStateAdvancePlan — `planningPaths(cwd).state`, no `ws` passed explicitly)
   - src/planning-workspace.cts:124-141 (planningDir — resolves `ws` from `process.env['GSD_WORKSTREAM']` only, once entered)

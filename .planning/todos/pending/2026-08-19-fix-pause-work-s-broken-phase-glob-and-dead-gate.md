@@ -3,6 +3,8 @@ created: 2026-08-20T02:13:40.264Z
 title: Fix pause-work's broken phase glob and dead gate
 area: tooling
 severity: blocker
+scope: Large
+scope_note: Cross-cutting across 6+ workflow files, five coupled sub-fixes that must ship together per the todo's own warning, plus six secondary findings
 files:
   - gsd-core/workflows/pause-work.md:18
   - gsd-core/workflows/pause-work.md:21

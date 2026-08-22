@@ -3,6 +3,8 @@ created: 2026-08-20T23:14:00.000Z
 title: Port 4.4 — graphify budget-cliff: per-edge hop distance in a WeakMap
 area: tooling
 severity: minor
+scope: Small
+scope_note: Inert on its own, directly TDD-testable, one translation detail to remember (extend the ExpandResult interface)
 files:
   - src/graphify.cts (hopOf WeakMap — rest of the ~315-line block)
   - src/graphify.cts:280-285 (ExpandResult interface — MUST be extended, missing from runbook §2)

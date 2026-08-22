@@ -3,6 +3,8 @@ created: 2026-08-20T23:12:00.000Z
 title: Port 4.3 — graphify seed-floor: score seeds by match quality
 area: tooling
 severity: minor
+scope: Small
+scope_note: One exported, directly TDD-testable function, inert on its own; land before 4.3b and after 4.5 per the graphify cluster's sequencing
 files:
   - src/graphify.cts (seedAndExpand — scoring only; part of the ~315-line block)
   - src/graphify.cts:280-285 (ExpandResult interface — must gain seedScoreOf, see 4.4)

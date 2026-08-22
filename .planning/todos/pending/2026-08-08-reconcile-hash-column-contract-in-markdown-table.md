@@ -3,6 +3,8 @@ created: 2026-08-08T11:57:14Z
 title: Reconcile the # column's two conflicting writers
 area: tooling
 severity: major
+scope: Medium
+scope_note: Small code delta (one optional field, one fallback branch) but three open design questions a maintainer must answer first; blocks the escape-description todo's option 2
 files:
   - src/markdown-table.cts:710-716 (QuickTaskFields — no `id` field)
   - src/markdown-table.cts:737 (appendQuickTaskRow)
