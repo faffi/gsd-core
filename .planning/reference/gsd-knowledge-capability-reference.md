@@ -1,35 +1,18 @@
 # GSD Knowledge-Capability Reference — Steady State
 
-> **Generated:** 2026-08-21T23:20:00Z
-> **GSD version:** 1.11.0-58-g026e2a73
-> **Source:** gsd-core/src/intel.cts, gsd-core/src/graphify.cts, gsd-core/bin/lib/capability-registry.cjs
+> **Generated:** 2026-08-21T23:25:00Z
+> **GSD version:** 1.11.0-57-gca24ef3c
+> **Source:** gsd-core/src/intel.cts, gsd-core/src/graphify.cts, gsd-core/src/plan-drift-guard.cts, gsd-core/src/intel-command-router.cts
 
 **Scope:** project-agnostic. Applies to any GSD-managed repo.
-**Derived from:** gsd-core `next` @ `2b9713a6` (v1.10.0). File:line refs are to the gsd-core source
+**Derived from:** gsd-core `next` @ `7cf6a079` (v1.11.0). File:line refs are to the gsd-core source
 repo unless prefixed `~/.claude/` (the installed copy).
 
-> **2026-08-20 — header bumped to `next` @ `7cf6a079` (v1.11.0), claims NOT re-verified line-by-line.**
-> Spot-check only, against this session's own v1.11.0 CHANGELOG.md read: zero entries touch
-> intel/graphify/gsd-graph internals. One mempalace-adjacent fix landed (#3479/#3527, absent-key
-> defaults for `mirror_kg`/`diary_journal` now resolve to their declared `true` default instead of
-> requiring the key to be explicitly present) — does not contradict anything currently claimed here.
-> Treat every file:line citation below as **unverified against 1.11.0** until a real pass is done;
-> this bump only means "checked for a reason to distrust it wholesale, found none."
->
-> **EXCEPTION — §6 (intel) and §4's `grep`→`intel` auto-upgrade were empirically re-verified
-> 2026-08-20** against `next` @ `7cf6a079` (v1.11.0): capability gate, the 9-subcommand surface,
-> `loop render-hooks plan:pre` activation, `drift-guard authority`, and the plan-phase §7.9 dispatch
-> path were each executed or read directly. §6 carries one correction (the "never auto-runs" claim was
-> wrong) — see the CORRECTED note there. Probes ran through the shipped `gsd-core/bin/lib`, which on
-> that checkout is stale relative to `src/` (`runtime-homes.cjs` lacks
-> `NON_REGISTRY_CONFIG_HOME_DESCRIPTORS`, breaking 8 CLI-shelling tests in `tests/intel.test.cjs`);
-> `intel`'s own src↔shipped surface was diffed and is identical."
-**Purpose:** define the STEADY STATE for the four knowledge capabilities — intel, mempalace,
-graphify, gsd-graph — and the validation that proves a project is in it.
+**Purpose:** define the STEADY STATE for the four knowledge capabilities — intel, mempalace, graphify, gsd-graph — and the validation that proves a project is in it.
 
 > **Standard of proof:** claims cite the code that *executes* them (`file:line`). Where a behavior is
-> only described in docs or workflow prose with no enforcing code, it is marked as such — "documented"
-> is not "verified." Where docs and code disagree, the code wins and §10b records the divergence.
+only described in docs or workflow prose with no enforcing code, it is marked as such — "documented"
+is not "verified." Where docs and code disagree, the code wins and §10b records the divergence.
 
 ---
 
@@ -189,7 +172,7 @@ git push -u origin HEAD   # then open the MR
 # intel — the CLI CANNOT populate; spawn the agent
 Agent(subagent_type="gsd-intel-updater", prompt="Refresh .planning/intel/ for this project")
 gsd-tools query intel validate      # MANDATORY — an empty index fails silently
-gsd-tools query intel api-surface   # optional here — plan-phase.md §7.9 also runs it every plan (§6)
+gsd-tools query intel api-surface   # optional here — plan-phase may also run it (§6)
 
 gsd-graph enable                    # only if using gsd-graph
 ```
@@ -234,7 +217,10 @@ Two keys (`docs/CONFIGURATION.md:726-727`):
 🔑 **`intel.enabled: true` SILENTLY AUTO-UPGRADES the authority `grep` → `intel`.**
 `src/plan-drift-guard.cts:88-97`:
 ```ts
-export function getEffectiveAuthority(authority, intelEnabled) {
+export function getEffectiveAuthority(
+  authority: string | undefined | null,
+  intelEnabled: boolean,
+): Authority {
   const validated = validateAuthority(authority);      // undefined → 'grep'
   if (validated === 'grep' && intelEnabled === true) return 'intel';
   return validated;
@@ -244,7 +230,7 @@ Undocumented in CONFIGURATION.md. **Never set the authority key** — it is redu
 to `grep` does NOT opt out (the rule fires on exactly that value).
 
 **Blast radius: BOUNDED.** `AUTHORITY_RUNGS` (`:40-47`): `grep:0 intel:1 treesitter:2 lsp:3 scip:4`,
-`HARD_BLOCK_RUNG_THRESHOLD = 3`. `intel` is rung 1 — a `MISSING` verdict is advisory
+`HARD_BLOCK_RUNG_THRESHOLD = 3` (`:49`). `intel` is rung 1 — a `MISSING` verdict is advisory
 (`needs-acknowledgement`, `hardBlock:false`) under both grep and intel. **An empty index degrades
 signal quality; it cannot block planning.** Run `intel validate` anyway — an empty index makes every
 notice noise you learn to ignore.
@@ -261,7 +247,7 @@ researcher prompts before planning.
 | Consumer | Budget (code-enforced) | Queries (prompt only) | Source |
 |---|---|---|---|
 | `gsd-planner` | 2000 tok | 1 | `gsd-core/references/planner-load-graph-context.md:8,15,23` |
-| `gsd-phase-researcher` | 1500 tok | 2-3 | `agents/gsd-phase-researcher.md:570,576,584` |
+| `gsd-phase-researcher` | 1500 tok | 2-3 | `agents/gsd-phase-researcher.md:576,584` |
 | `/gsd-graphify` skill | unbounded | — | display only |
 
 The token budget is real: `applyBudget` (`src/graphify.cts:382-481`) drops edges by confidence tier to
@@ -271,7 +257,7 @@ Nothing else reads `graph.json`. gsd-core registers **no** graphify MCP server �
 `mcp__graphify__*` tools come from your own MCP config and **nothing in GSD's lifecycle uses them**.
 
 **Build** — there is no working `build` verb. `gsd-tools graphify build` is pre-flight only
-(`src/graphify.cts:715-746`; the `spawn_agent` name is vestigial per `SKILL.md:152`):
+(`src/graphify.cts:715-746`; returns `{action: 'spawn_agent'}` at line 738):
 ```bash
 graphify update .          # GRAPHIFY_FORCE=1 if refused for having fewer nodes
 cp graphify-out/graph.json .planning/graphs/graph.json
@@ -310,8 +296,8 @@ manually.**
 
 **Silent failure modes:** graph absent → skip; capability disabled → `disabledResponse()`, no `stale`
 key, reads as "no results"; **skill de-surfaced → everything disabled EVEN WITH
-`graphify.enabled: true`** (`active = (installed && surfaced) && configActivation`,
-`capability-state.cts:85-101`); `graph.json` unparseable → agents have no `error` branch.
+`graphify.enabled: true`** (`active = enabled && configActivation` where `enabled = installed && surfaced`,
+`src/capability-state.cts:100,242,249`); `graph.json` unparseable → agents have no `error` branch.
 `writeSnapshot` is the only verb with **no** capability guard.
 
 **Version warning is a false negative** on `uv tool`/pipx installs — the identity probe uses PATH `python3`, which cannot see an isolated venv. Nothing gates on it. Install with `uv tool install graphifyy` (the in-code `uv pip install` hint at `src/graphify.cts:127` is wrong).
@@ -332,55 +318,17 @@ it returns a `spawn_agent` directive (§3c), whose message circularly tells you 
 Only the agent writes the files.
 
 ⚠️ **7 of the 9 subcommands honour `intel.enabled`; `extract-exports` and `patch-meta` do not.**
-The gate lives inside each `intel.cts` function, not in the router, so those two run with intel
+The gate lives inside each `src/intel.cts` function, not in the router, so those two run with intel
 disabled — verified 2026-08-20: with `{"intel":{"enabled":false}}`, `status` returns the `disabled`
 envelope while `patch-meta` still rewrote `_meta.updated_at` on a `path.resolve(cwd, …)` target.
 Deliberate (`src/intel.cts:534`, `:575`: "Does not gate on isCapabilityActive … for use by agents
 building intel data"), since the updater agent calls both while populating — but it does mean
 `patch-meta` is an always-live `_meta.updated_at`/`version` patcher on any existing parseable JSON
-path, regardless of the capability's activation state.
+path, regardless of the capability's activation state. Capability gate checks at lines 187, 224,
+272, 308, 358, 372, 469 in `src/intel.cts`.
 
 **Strongest consumer:** the plan drift guard (`gsd-core/workflows/plan-review-convergence.md:242`) —
 catches plans citing functions that don't exist.
-
-⚠️ **Its `plan:pre` step IS dispatched — but by a bespoke handler, not the generic contract.**
-The *generic* dispatcher at `plan-phase.md:459`, labelled "**Generic** step hook dispatch
-contract," has only `ref.skill` and `ref.agent` branches, so a `ref.command` step falls straight
-through it (all five `execute:post` sites are narrower still — `autonomous.md:438`,
-`code-review-fix.md:87`, `code-review.md:90`, `execute-phase.md:1233`, `quick.md:552` filter on
-`kind=="step" && ref.skill=="code-review"`). **But `plan-phase.md:650-665` §7.9 "Regenerate
-API-SURFACE.md (intel gate)" matches the hook by `capId == "intel"` and runs a hardcoded
-`gsd_run intel api-surface` (`:660`), setting `API_SURFACE_PATH` (`:661`) which step 8 injects into
-the planner prompt as a HINT (`:718`, `:728-730`).** §7.9 predates this correction (present at
-`2b9713a6`/v1.10.0), so the earlier "never auto-runs" claim here was wrong at 1.10.0 too, not merely
-stale. Both other planning hosts reach it transitively — `autonomous.md:365,380,392` and
-`plan-review-convergence.md:154,438` both call `Skill(skill="gsd-plan-phase")` rather than
-reimplementing `plan:pre`.
-
-⚠️ **…but §7.9 is bypassable, and the bypass fires exactly where intel matters most.** `§7.8`
-(pattern-mapper) has two jumps that land on **step 8**, skipping 7.9 entirely:
-`plan-phase.md:613` ("If PATTERNS.md already exists … Skip to step 8") and `:607` ("or Step 8 if
-pattern mapper is disabled"). `API_SURFACE_PATH` is assigned **only** at `:661`, and `:728` wraps the
-whole `<intel_surface_hint>` block in `${API_SURFACE_PATH ? …}` — so on either bypass the hint is
-silently absent from the planner prompt, with no warning. PATTERNS.md exists from cycle 1 of
-`/gsd:plan-review-convergence`, so **every replan cycle after the first drops the API-surface hint** —
-in the one workflow whose source-grounding pass (§4) is intel's strongest consumer. Verified by
-inspection at `next`@`7cf6a079`, not by execution. Running `intel api-surface` manually before a
-replan is still worthwhile for that reason.
-
-> **CORRECTED 2026-08-20** (empirical trace, gsd-core `next` @ `7cf6a079`/v1.11.0). Prior text
-> read "⚠️ Its `plan:pre` step is a `ref.command`, which NO shipped workflow dispatches … run it
-> manually after each refresh." That generalised a true statement about the *generic* contract into a
-> false one about intel. Verified: `loop render-hooks plan:pre --raw` lists the intel hook only when
-> `intel.enabled` is true, and §7.9 dispatches it by capId. The residual true case is
-> `refactor-trigger`'s `refactor evaluate` at execute:post — zero handlers, genuinely inert (though
-> also opt-in: `refactor.trigger_enabled` defaults to `false`, so it is disabled-and-undispatched,
-> not live-and-broken).
-
-The *mechanism* warning still stands: nothing anywhere reads `ref.command` generically
-(`gsd-core/references/loop-hook-dispatch.md:45-56` specifies it; no workflow implements it), so a
-third-party capability declaring a `ref.command` step gets silence. intel escapes only because
-plan-phase hardcodes its command. Upstream #3559 is the same class for `ship:pre` gates.
 
 Written by an LLM agent ⇒ stale the moment code changes, and only as accurate as the agent. The guard
 at `gsd-intel-updater.md:126` exists because it got this wrong: exports must be real identifiers,
@@ -404,9 +352,10 @@ Why it works where others don't: it **declares** its steps in the manifest (so `
 reports them) and uses only `ref.skill`/`ref.agent` — the two kinds workflows actually dispatch.
 
 **Config note:** `mempalace.*` keys are NOT in gsd-core's central schema manifest — they come from the
-capability's own `config` block, which is why `query config-set mempalace.*` is accepted. Same pattern as
-`graphify.enabled` (capability-owned) vs `graphify.auto_update`/`build_timeout`/`graph_path`
-(central manifest). A `validKeys` grep returning nothing for mempalace is expected.
+capability's own `config` block (`gsd-core/bin/lib/capability-registry.cjs` mempalace entry), which is why
+`query config-set mempalace.*` is accepted. Same pattern as `graphify.enabled` (capability-owned) vs
+`graphify.auto_update`/`build_timeout`/`graph_path` (central manifest). A `validKeys` grep returning
+nothing for mempalace is expected.
 
 **`memory_mode: augment`** means the palace is **additive** — native `.planning/` memory stays
 authoritative and both are written. The palace and `~/.claude/projects/*/memory/` are **parallel, not
@@ -423,7 +372,7 @@ synchronized**: fixing a native memory does not fix its palace counterpart.
 explicitly *not* full `src/`) into `.gsd-graph/graph.v1.json`. CLI + its own MCP server.
 
 **gsd-core has ZERO awareness.** 0 hits for `.gsd-graph`, `gsd_graph`, `graph.v1.json`,
-`@opengsd/gsd-graph`. No `capabilities/gsd-graph/`. Touches no loop point, appears in no agent prompt
+`@opengsd/gsd-graph` in `src/` or `gsd-core/` directories. No `capabilities/gsd-graph/`. Touches no loop point, appears in no agent prompt
 — **nothing in a GSD workflow will ever invoke it.** It is a peer of gsd-core, not a component.
 
 ⚠️ **GREP TRAP:** naive `grep -i 'gsd-graph'` returns ~229 hits in gsd-core, **ALL `gsd-graphify`
