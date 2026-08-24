@@ -11,7 +11,7 @@ import path from 'node:path';
 import { escapeRegex } from './pattern.cjs';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import ioMod = require('./io.cjs');
-const { output, error } = ioMod;
+const { output, error, ERROR_REASON } = ioMod;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import configLoaderMod = require('./config-loader.cjs');
 const { loadConfig } = configLoaderMod;
@@ -31,7 +31,11 @@ const { getMilestoneInfo, extractCurrentMilestone, isMilestoneBoundedInRoadmap, 
 import { platformWriteSync, platformReadSync, platformEnsureDir, retryRenameSync, toPosixPath, execGit } from './shell-command-projection.cjs';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import planningWorkspace = require('./planning-workspace.cjs');
-const { planningDir, planningPaths } = planningWorkspace;
+const {
+  planningDir, planningPaths, listAvailableWorkstreams,
+  peekActiveWorkstream, diagnoseUnresolvedActiveWorkstream, describeUnresolvedWorkstreamReason,
+} = planningWorkspace;
+import { formatGsdSlash, resolveRuntime } from './runtime-slash.cjs';
 import { realClock } from './clock.cjs';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import frontmatter = require('./frontmatter.cjs');
@@ -654,6 +658,40 @@ function stateReplaceFieldWithFallback(content: string, primary: string, fallbac
 }
 
 function cmdStateAdvancePlan(cwd: string, raw: boolean): void {
+  // Fail-safe guard, mirroring init.progress (#3579) and phase.complete: in
+  // workstream mode (a .planning/workstreams/ dir exists at all), advancing
+  // against an unresolved workstream silently targets the root STATE.md,
+  // which is either stale or belongs to a different, unrelated milestone.
+  // Reported by a peer session: with a dangling active-workstream pointer
+  // (its workstream dir renamed/archived without clearing the marker),
+  // advance-plan returned a plausible {"advanced":true,...} twice in a row
+  // while silently mutating root .planning/STATE.md instead of the
+  // workstream's — no error, no warning. Refuse instead of guessing.
+  const availableWorkstreams = listAvailableWorkstreams(cwd);
+  // #3579 root-cause fix: peek (not the self-healing getActiveWorkstream) so
+  // an unresolvable pointer isn't cleared here and then found "absent" by
+  // diagnoseUnresolvedActiveWorkstream below — misreporting a present-but-bad
+  // marker as no marker at all.
+  const resolvedWorkstream = process.env['GSD_WORKSTREAM'] || peekActiveWorkstream(cwd);
+  if (availableWorkstreams.length > 0 && !resolvedWorkstream) {
+    const diagnosis = diagnoseUnresolvedActiveWorkstream(cwd);
+    if (diagnosis.present) {
+      error(
+        `state advance-plan requires a workstream in workstream mode — the active-workstream marker names '${diagnosis.value}', but it did not resolve: ${describeUnresolvedWorkstreamReason(diagnosis.reason)}. Root STATE.md (likely stale or a different milestone's) would be advanced otherwise. ` +
+          `Pass --ws <name> or run ${formatGsdSlash('workstream set', resolveRuntime(cwd)) as string} to point it at an existing workstream. ` +
+          `Available workstreams: ${availableWorkstreams.join(', ')}`,
+        ERROR_REASON.WORKSTREAM_MODE_MARKER_UNRESOLVED,
+        { marker_value: diagnosis.value, marker_reason: diagnosis.reason },
+      );
+    }
+    error(
+      `state advance-plan requires a workstream in workstream mode — no active workstream is set, so root STATE.md (likely stale or a different milestone's) would be advanced. ` +
+        `Pass --ws <name> or run ${formatGsdSlash('workstream set', resolveRuntime(cwd)) as string} first. ` +
+        `Available workstreams: ${availableWorkstreams.join(', ')}`,
+      ERROR_REASON.WORKSTREAM_MODE_NONE_ACTIVE,
+    );
+  }
+
   const statePath = planningPaths(cwd).state;
   if (!fs.existsSync(statePath)) { output({ error: 'STATE.md not found' }, raw, undefined); return; }
 
