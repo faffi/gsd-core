@@ -44,6 +44,15 @@ RAILROAD_ARCHITECTURE.md
 !.planning/reference/
 !.planning/runbooks/
 !.planning/notes/
+# Root-level milestone artifacts need their own negations: the directory
+# negations above work because `.planning/*` (not bare `.planning/`) leaves the
+# directory itself un-pruned, but each of these is a FILE at .planning/ root and
+# is still matched by `.planning/*`. Without these three lines /gsd-new-milestone
+# writes and "commits" them as ignored files — staging nothing, reporting
+# success, and losing them on the next `working` rebuild.
+!.planning/PROJECT.md
+!.planning/ROADMAP.md
+!.planning/STATE.md
 
 # Personal patch (same branch): re-include our own CLAUDE.md, negating the bare
 # `CLAUDE.md` exclusion further up. Upstream ignores it because CONTEXT.md is the
