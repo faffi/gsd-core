@@ -2,6 +2,7 @@
 created: 2026-08-20T21:45:00.000Z
 title: audit-open counts.todos reports the display cap, not the count
 area: tooling
+resolves_phase: 6
 severity: major
 scope: Small
 scope_note: Recommended fix (option 1, count before slicing) mirrors an existing in-file pattern (scanContextQuestions) — one function, small diff

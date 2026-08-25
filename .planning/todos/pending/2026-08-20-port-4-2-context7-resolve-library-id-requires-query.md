@@ -2,6 +2,7 @@
 created: 2026-08-20T23:11:00.000Z
 title: Port 4.2 — context7 resolve-library-id requires query as well as libraryName
 area: tooling
+resolves_phase: 6
 severity: major
 scope: Small
 scope_note: 3 doc-only files, already validated against the live tool schema, splits cleanly into two commits, no runtime risk

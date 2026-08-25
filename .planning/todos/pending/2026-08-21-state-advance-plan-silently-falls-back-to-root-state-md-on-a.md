@@ -2,6 +2,7 @@
 created: 2026-08-21T22:34:56.330Z
 title: state advance-plan silently falls back to root STATE.md on a dangling active-workstream pointer
 area: tooling
+resolves_phase: 2
 severity: blocker
 scope: Small
 scope_note: Two narrow, localized fixes (surface the fallback in the response, assert statePath matches what was requested) plus a quick scope-check on workstream complete — no sweep required

@@ -2,6 +2,7 @@
 created: 2026-08-20T23:40:00.000Z
 title: Two local-only skills and one agent are destroyed by make install
 area: tooling
+resolves_phase: 1
 severity: blocker
 scope: Small
 scope_note: Mechanically a copy of 3 rescued files into the repo plus a commit on a local branch; the effectiveness-validation question for 2 of them is explicitly deferrable

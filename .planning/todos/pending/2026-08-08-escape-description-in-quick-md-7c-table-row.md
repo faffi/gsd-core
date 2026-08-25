@@ -2,6 +2,7 @@
 created: 2026-08-08T11:57:14Z
 title: Escape ${DESCRIPTION} in quick.md step 7c table row
 area: tooling
+resolves_phase: 5
 severity: blocker
 scope: Small
 scope_note: Option 1 is a single doc instruction edit; option 2 is the preferred fix but is coupled with the reconcile-hash-column todo and should land second

@@ -1,7 +1,8 @@
 ---
 created: 2026-08-20T23:12:00.000Z
-title: Port 4.3 — graphify seed-floor: score seeds by match quality
+title: "Port 4.3 — graphify seed-floor: score seeds by match quality"
 area: tooling
+resolves_phase: 6
 severity: minor
 scope: Small
 scope_note: One exported, directly TDD-testable function, inert on its own; land before 4.3b and after 4.5 per the graphify cluster's sequencing

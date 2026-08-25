@@ -2,6 +2,7 @@
 created: 2026-08-22T12:05:00.000Z
 title: the bounded-subprocess timeout signals only the direct child, so every hung `node-test` check leaks an orphaned grandchild that spins a core forever — and the test that exists to prove the bound works is itself the biggest leaker
 area: tooling
+resolves_phase: 1
 severity: major
 scope: Small
 scope_note: One flag in `buildNodeTestArgs` plus a survivor assertion and a regression test. Small in diff, but the leak is unbounded in cost — two runs left 2 orphans burning ~1.8 cores for 34h on the author's machine, and the class affects every `node-test` check, not just the hang fixture.

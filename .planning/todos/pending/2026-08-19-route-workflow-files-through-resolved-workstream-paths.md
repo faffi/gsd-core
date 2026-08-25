@@ -2,6 +2,7 @@
 created: 2026-08-20T01:51:52.025Z
 title: Route workflow files through resolved workstream paths
 area: tooling
+resolves_phase: 5
 severity: blocker
 scope: Large
 scope_note: 27 sites across 8 files — each individually mechanical, but the sweep plus a proposed follow-up lint rule adds up to a large PR, not a high-risk one

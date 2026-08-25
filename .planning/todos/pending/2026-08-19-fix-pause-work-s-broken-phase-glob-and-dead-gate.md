@@ -2,6 +2,7 @@
 created: 2026-08-20T02:13:40.264Z
 title: Fix pause-work's broken phase glob and dead gate
 area: tooling
+resolves_phase: 5
 severity: blocker
 scope: Large
 scope_note: Cross-cutting across 6+ workflow files, five coupled sub-fixes that must ship together per the todo's own warning, plus six secondary findings

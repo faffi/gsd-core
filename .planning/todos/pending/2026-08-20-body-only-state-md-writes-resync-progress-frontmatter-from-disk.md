@@ -2,6 +2,7 @@
 created: 2026-08-20T22:20:00.000Z
 title: Body-only STATE.md writes resync progress frontmatter from disk
 area: tooling
+resolves_phase: 3
 severity: blocker
 scope: Large
 scope_note: 17 call sites audited, 3 fix options (point/class/invert-default) with the robust one being a default inversion across the whole write path

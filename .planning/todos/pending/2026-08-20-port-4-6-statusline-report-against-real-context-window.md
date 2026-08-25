@@ -1,7 +1,8 @@
 ---
 created: 2026-08-20T23:16:00.000Z
-title: Port 4.6 — statusline: report against the model's real context window
+title: "Port 4.6 — statusline: report against the model's real context window"
 area: tooling
+resolves_phase: 6
 severity: major
 scope: Small
 scope_note: Single tracked source file, no build translation; the source change and the 3-assertion test rewrite land together in one well-understood commit

@@ -1,7 +1,8 @@
 ---
 created: 2026-08-20T23:14:00.000Z
-title: Port 4.4 — graphify budget-cliff: per-edge hop distance in a WeakMap
+title: "Port 4.4 — graphify budget-cliff: per-edge hop distance in a WeakMap"
 area: tooling
+resolves_phase: 6
 severity: minor
 scope: Small
 scope_note: Inert on its own, directly TDD-testable, one translation detail to remember (extend the ExpandResult interface)

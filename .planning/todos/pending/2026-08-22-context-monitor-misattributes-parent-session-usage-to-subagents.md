@@ -2,12 +2,13 @@
 created: 2026-08-22T02:20:00.000Z
 title: gsd-context-monitor warns subagents with the parent session's context usage, not their own
 area: hooks
+resolves_phase: 6
 severity: major
 scope: Small
 scope_note: The fix is a single guard clause, already implemented and verified in the live install — porting it into this repo's own hooks/gsd-context-monitor.js is the same minimal diff
 files:
   - hooks/gsd-context-monitor.js:43-54 (session_id read, no agent_id check — reads the metrics file unconditionally)
-  - hooks/gsd-context-monitor.js:74 (metricsPath keyed only by sessionId: `claude-ctx-${sessionId}.json`)
+  - "hooks/gsd-context-monitor.js:74 (metricsPath keyed only by sessionId: `claude-ctx-${sessionId}.json`)"
   - hooks/gsd-statusline.js:608-620 (bridge write — session/used_pct only, no agent scoping)
   - hooks/hooks.json (registers gsd-context-monitor.js on PostToolUse, SubagentStop, Stop, PreCompact)
   - ~/.claude/settings.json (hooks + statusLine config; confirms `subagentStatusLine` is absent/unset in this install)
