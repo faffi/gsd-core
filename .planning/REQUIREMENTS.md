@@ -148,8 +148,44 @@ is trying to avoid. Where a phase spans independent surfaces, split it:
 
 ## Traceability
 
-Filled during roadmap creation.
+Mapped during roadmap creation (2026-08-24). All 32 v1.12 requirements map to exactly one phase.
 
 | Requirement | Phase | Status |
 |---|---|---|
-| (pending roadmap) | — | — |
+| INST-01 | Phase 1 | Pending |
+| INST-02 | Phase 1 | Pending |
+| INST-03 | Phase 4 | Pending |
+| INST-04 | Phase 1 | Pending |
+| INST-05 | Phase 1 | Pending |
+| WS-01 | Phase 2 | Pending |
+| WS-02 | Phase 2 | Pending |
+| WS-03 | Phase 2 | Pending |
+| WS-04 | Phase 2 | Pending |
+| WS-05 | Phase 2 | Pending |
+| WS-06 | Phase 2 | Pending |
+| WS-07 | Phase 2 | Pending |
+| WS-08 | Phase 2 | Pending |
+| STATE-01 | Phase 3 | Pending |
+| SHELL-01 | Phase 4 | Pending |
+| SHELL-02 | Phase 4 | Pending |
+| SHELL-03 | Phase 4 | Pending |
+| SHELL-04 | Phase 4 | Pending |
+| ROUTE-01 | Phase 5 | Pending |
+| ROUTE-02 | Phase 5 | Pending |
+| ROUTE-03 | Phase 5 | Pending |
+| INSTALL-01 | Phase 1 | Pending |
+| INSTALL-02 | Phase 1 | Pending |
+| PORT-01 | Phase 6 | Pending |
+| PORT-02 | Phase 6 | Pending |
+| PORT-03 | Phase 6 | Pending |
+| PORT-04 | Phase 6 | Pending |
+| PORT-05 | Phase 6 | Pending |
+| PORT-06 | Phase 6 | Pending |
+| REPORT-01 | Phase 6 | Pending |
+| REPORT-02 | Phase 6 | Pending |
+| REPORT-03 | Phase 5 | Pending |
+
+**Coverage:** 32/32 mapped, 0 orphans, 0 duplicates.
+
+Future Requirements (`WS-F01`, `WS-F02`, `TOOL-F01`, `TOOL-F02`) are deferred past v1.12 and are
+deliberately absent from this table.
