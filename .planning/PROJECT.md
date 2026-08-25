@@ -16,6 +16,43 @@ Every local divergence from upstream is either **deliberately carried** (recorde
 reason) or **on its way upstream** (as a fix with a test) — never silently accumulating
 as drift that the next `make install` destroys.
 
+## Current Milestone: v1.12 Fix the blockers, finish the port campaign
+
+**Goal:** Clear the eight captured blockers and land the remaining 1.10.0 → 1.11.0 port
+concerns, so every local divergence from upstream is either deliberately carried or on its
+way upstream as a tested fix.
+
+**Target features:**
+- Workstream-mode fail-safe that actually fires — one shared precondition across
+  `state advance-plan`, `init.progress` and `phase.complete`, ending silent root-STATE.md
+  corruption on a dangling active-workstream pointer
+- Shell fences that run under the login shell — zsh-safe glob guards at the 11 affected
+  sites, plus a harness that stops testing them under a shell nobody uses
+- Workstream-correct file routing — `pause-work`'s phase glob and dead gate, and workflow
+  files resolved through workstream paths rather than root
+- STATE.md writes that do not resync stale frontmatter from disk
+- The glab forge port made live again and migrated onto 1.11.0
+- Port concerns 4.2–4.10 completed, and graphify's removed seed-floor invariant restored
+  with CI that can see it
+- Local-only skills and agents that survive `make install`
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ## Requirements
 
 ### Validated
@@ -100,4 +137,4 @@ as drift that the next `make install` destroys.
 | Fix shared preconditions in all affected commands at once | `state`/`init`/`phase` carry an identical copied guard; fixing one leaves the other two to be refiled separately | — Pending |
 
 ---
-*Last updated: 2026-08-24 after standing up the first milestone*
+*Last updated: 2026-08-24 after starting milestone v1.12*
