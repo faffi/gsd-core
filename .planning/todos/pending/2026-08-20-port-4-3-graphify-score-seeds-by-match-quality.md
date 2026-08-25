@@ -45,6 +45,16 @@ Part of the graphify block (runbook §5 item 4), after 4.5. Land as its own comm
 Translate from the `bin/lib/graphify.cjs` patch hunk to `src/graphify.cts` — never edit the
 compiled lib.
 
+## SPEC cross-reference — 2026-08-25 (gsd-1.10.0-mods)
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` packages 4.3 + 4.3b + 4.4 + 4.5
+as **one unit** ("a partial port yields a document instructing agents to read fields that are not
+emitted"). It reconfirms this commit's scoring-only, inert-alone framing and supplies the ranking
+key 4.3b's fix must use scoring output for (confidence, relation type, hop distance, weight,
+lexical tiebreak — see 4.3b's amendment). No new requirement lands on 4.3 itself; land it as part
+of that four-todo unit, not standalone.
+
 ## Cross-references
 
 - Analysis: runbook §4.3 · the behaviour change that consumes this: 4.3b todo · mechanism: 4.4 todo
+- SPEC unit: `~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` (implement with 4.3b, 4.4, 4.5)

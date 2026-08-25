@@ -393,3 +393,37 @@ Ordering:
 Not blocking today: `~/.claude` still runs patched 1.10.0. This becomes blocking the
 moment `/gsd-update` moves the installed tree to 1.11.0 — at which point `gsd-core/` is
 wipe-and-replaced and the port disappears without warning.
+
+## SPEC cross-reference — 2026-08-25 (gsd-1.10.0-mods) — corroborates R5, is SILENT on Finding 3
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-03-gitlab-forge-support.md` is a requirements-level companion to
+this todo's line-by-line patch analysis. Where they overlap:
+
+- **R5 exactly matches this todo's Finding 2** ([ci skip] must be dropped on GitLab — GitLab
+  evaluates MR merge-gates against the HEAD pipeline, so the trailer leaves the MR permanently
+  unmergeable pending a check that never runs). Independent corroboration, same conclusion.
+- Same four files in scope (`inbox.md`, `ship.md`, `pr-branch.md`, `references/checkpoints.md`).
+- Gives a broader **glab-side** call-site inventory this todo didn't audit (it audited the `gh`
+  side only): `inbox.md` 19 `glab` sites / 9 gates, `ship.md` 9 `glab` sites / 5 gates. Complementary
+  scope, not a conflict — use both when verifying the ported files.
+- Confirms upstream's permanent refusal (`#2138`) and reiterates: this can only ever live as a
+  local fork carry, size for long-term maintenance.
+- New, useful design invariant this todo didn't state explicitly: **R2 — every `glab` call must sit
+  behind an EXECUTED shell conditional, never a comment-style label.** The SPEC's own runbook found
+  a comment-only pairing that executed *both* forges' commands. Worth adding as an explicit
+  verification step alongside this todo's existing fence-scoping checks.
+
+**Gap to flag, not silently trust: SPEC-03 does not address Finding 3.** SPEC-03's R1 says "detect
+the forge once, per workflow" — phrasing that assumes shell state persists across a workflow. This
+todo's Finding 3 measured the opposite, by execution: GSD markdown fences are separate Bash-tool
+invocations, shell state does not survive between them, and the `$FORGE` derivation and every guard
+that reads it sit in different fences — so the *existing* patch is inert on GitLab regardless of
+this SPEC's design. SPEC-03's acceptance criteria never test for this (no fence-scoping check in
+its Verification block). Implementing SPEC-03 as written, without also applying this todo's Finding
+3 fix (options: re-derive per fence, persist via `.planning/config.json` + `gsd_run query`, or fail
+closed) would reproduce the exact silent-fallthrough-to-GitHub defect this todo already caught.
+Treat Finding 3's fix as mandatory regardless of which SPEC-03 requirement is being implemented.
+
+## Cross-references (SPEC)
+
+- `~/Desktop/gsd-1.10.0-mods/SPEC-03-gitlab-forge-support.md` — companion requirements doc; see gap above

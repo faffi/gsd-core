@@ -71,6 +71,48 @@ Runbook §5 item 6 — **split first**, two commits:
 2. **Routing** — plus the `:453,462` checklist fix **and** `skills/gsd-review-concurrent/SKILL.md`
    on the same branch. Cannot go upstream until the skill does.
 
+## SPEC cross-reference — 2026-08-25 (gsd-1.10.0-mods) — the routing half is now much more fully specified
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-05-concurrent-cross-ai-review.md` covers only the routing half of
+this todo (dispatch to `gsd-review-concurrent`) — it says nothing about `max-cycles` 3→5, which
+remains this todo's separate, still-thinly-specified concern. But it substantially deepens the
+routing half beyond what this todo currently describes, in `plan-review-convergence.md` and
+`review.md`:
+
+- **R1** — the actual dispatch swap is 2 lines (`Skill('gsd-review', ...)` → `Skill('gsd-review-
+  concurrent', ...)`); everything else below is diagnostics the SPEC adds on top.
+- **R2** — provider-based lane partitioning with a fail-safe default: parallel-safe allow-list is
+  `gemini codex coderabbit opencode qwen cursor antigravity kimi-code`; **everything else, including
+  any unrecognised future slug, goes SERIAL — never dropped.** A dropped lane is invisible: never
+  invoked, absent from REVIEWS.md, never reported missing.
+- **R3** — outcome must be read from the per-lane result JSON (`ok`/`stubbed`/`reason`), never from
+  `[ -s file ]` — core's `writeReviewOrStub` always writes a non-empty file, including on failure
+  (a stub). Five distinct states (OK/STUB/REFUSED/NO-RESULT/ANOMALY) with REFUSED and STUB having
+  *opposite* file-existence outcomes — the reason a file-existence check can't distinguish them.
+- **R4/R5** — a pre-run banner (`LANE / MODEL / EFFORT`) rendered as shell output in the SAME fence
+  as phase validation, never split across fences or paraphrased from a partial read (both failure
+  modes were observed directly). Model resolution isn't derivable from the slug alone
+  (`antigravity` → `review.models.agy`, not `review.models.antigravity`).
+- **R6** — exactly one branch-decision line per cycle (CONTINUING / MAX CYCLES / CONVERGED), and an
+  explicit prohibition: **there is no cycle-boundary approval step** — an agent that inserted one
+  turned a 5-cycle automated loop into a manual one silently.
+- **R7** — cycle N≥2 reviewers get prior findings (`### Previously Raised Concerns`, classified
+  ADDRESSED/PARTIALLY/NOT with `file:line` evidence) — cycle 1 stays byte-identical to upstream.
+- Confirms `docs/ARCHITECTURE.md:125`'s "Skill tool hard-errors on unknown names" finding this todo
+  already cites, and independently measured actual parallelism (two `review-lane invoke` processes,
+  same second, consecutive PIDs, ~27% wall-clock savings on two lanes — evidence this todo didn't
+  have).
+
+**A separate, newer todo now owns the skill-porting sub-scope in much more depth than either this
+todo or SPEC-05**: `.planning/todos/pending/2026-08-25-implement-gsd-review-concurrent-as-a-tracked-skill.md`
+(written by a peer session, 2026-08-25) — it re-verifies the skill's contract against 1.11.0 live,
+catalogs 5 defects (2 HIGH: the same `[ -s file ]` flaw SPEC-05's R3 names, from the *implementer's*
+side), and gives the concrete "give it a tracked home + add the partition-fallback test" solution.
+Treat that todo as the current source of truth for the skill itself; this todo (4.8) still owns the
+workflow-side routing edit and the max-cycles bump.
+
 ## Cross-references
 
 - Analysis: runbook §4.8 · sequence §5 item 6
+- SPEC (routing half, R1-R7): `~/Desktop/gsd-1.10.0-mods/SPEC-05-concurrent-cross-ai-review.md`
+- Skill implementation (now much more detailed than "must be IMPORTED"): `.planning/todos/pending/2026-08-25-implement-gsd-review-concurrent-as-a-tracked-skill.md`

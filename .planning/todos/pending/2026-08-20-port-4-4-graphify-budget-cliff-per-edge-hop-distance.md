@@ -42,6 +42,15 @@ response.
 
 Part of the graphify block (runbook §5 item 4). Land with or just after 4.3, **before** 4.3b.
 
+## SPEC cross-reference — 2026-08-25 (gsd-1.10.0-mods)
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` R1 places hop distance third in
+the five-key ranking order (confidence → relation type → hop distance → weight → lexical
+tiebreak) that 4.3b's rewritten `applyBudget` must implement — confirming this WeakMap is load-
+bearing for the fix, not incidental. No change to this todo's own scope; land as part of the
+4.3/4.3b/4.4/4.5 unit.
+
 ## Cross-references
 
 - Analysis: runbook §4.4 · the consumer: 4.3b todo · scoring sibling: 4.3 todo
+- SPEC unit: `~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` R1 (ranking key position 3)

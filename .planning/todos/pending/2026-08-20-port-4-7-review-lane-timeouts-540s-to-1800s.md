@@ -70,6 +70,42 @@ Runbook §5 item 7 — **last**. Revised action:
 4. **LOCAL-ONLY.** With no failure story there is no upstream case for changing a default.
    Consider deferring entirely until a real timeout is observed.
 
+## SPEC cross-reference — 2026-08-25 (gsd-1.10.0-mods)
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-02-antigravity-timeout.md` corroborates this todo's core finding
+(only `src/review-lane-descriptor.cts` has runtime effect; `capabilities/antigravity/capability.json`
+is dead for dispatch, kept for validator consistency only) and gives the fork-specific procedure
+this todo's Solution step 1 didn't fully spell out:
+
+- **`capability-registry.cjs` is GENERATED** (`npm run gen:capability-registry`, wired into the
+  `version` script) — never hand-edit it. The two-file lockstep hazard the installed 1.10.0 tree
+  has (editing the descriptor AND the registry, which embeds the value at two offsets) collapses in
+  the fork to: edit `src/review-lane-descriptor.cts`, then regenerate. A hand-edit that happens to
+  match would hide the fact the generator input was never updated.
+- **Idempotency check proves it was regenerated, not hand-edited** — the load-bearing verification
+  step this todo didn't previously have:
+  ```bash
+  npm run gen:capability-registry && git diff --exit-code gsd-core/bin/lib/capability-registry.cjs
+  ```
+- Confirms the same value pair (540s→1800s, 600_000→1_920_000ms) and the same "empirically chosen
+  against observed review durations, not derived — re-measure if the fork changes the agy prompt
+  size materially" caveat this todo's own Risks section reaches independently.
+- Independently confirms the "patch sat in no diff and no runbook entry... drift check caught 13
+  modified against an 11-item patch set" incident this todo already cites — same provenance, cross-
+  session corroboration.
+- Two `*.bak-540s` pre-edit backup files were found in the installed tree during the SPEC's
+  derivation, verified byte-identical to pristine 1.10.0, and deleted 2026-08-25. Informational only
+  — nothing to port, but the SPEC's broader point stands: `.gitignore` hides `*.bak-*`, so this class
+  of drift is invisible to `git status`. Worth wiring the fork's own equivalent check into CI.
+
+**Discrepancy to flag, not copy verbatim:** SPEC-02's R2 states the outer/inner ratio as "3.2×
+(1800s × 3.2 ≈ 1920s)" — that arithmetic is wrong (1800 × 3.2 = 5760, not 1920). Its own
+verification snippet computes the actual ratio correctly as `1920000/1000/1800 ≈ 1.0667` with a
+comment noting "the 3.2x is inner-handler vs outer" (i.e., a different pair of numbers than the one
+the prose sentence claims to be describing). Use the verification snippet's live computation, not
+the prose ratio, when confirming R2's "preserve the two-level timeout structure" requirement.
+
 ## Cross-references
 
 - Analysis: runbook §4.7 · sequence §5 item 7
+- SPEC: `~/Desktop/gsd-1.10.0-mods/SPEC-02-antigravity-timeout.md` (note the R2 ratio-arithmetic discrepancy above)

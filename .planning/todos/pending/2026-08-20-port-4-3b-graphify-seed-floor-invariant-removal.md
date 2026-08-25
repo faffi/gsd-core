@@ -67,6 +67,32 @@ port campaign.
 
 Translate to `src/graphify.cts` — never edit `gsd-core/bin/lib/graphify.cjs`.
 
+## SPEC cross-reference — 2026-08-25 (gsd-1.10.0-mods) — this is the fix contract, not just risk analysis
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` R1 gives the exact design this
+todo's "mandatory NEW RED test" demanded but did not fully specify. Treat R1 as the acceptance
+contract for whatever replaces `applyBudget`:
+
+- **Total ordering, not tier deletion.** Rank every edge individually; ranking key in order:
+  confidence → relation type → hop distance (4.4's WeakMap) → weight → lexical (final tiebreak,
+  for determinism). Then a binary-search prefix finds the largest set fitting the budget.
+- **Monotonicity is a named acceptance criterion, not just a desirable property**: increasing the
+  budget must never decrease the returned edge count. This is precisely the invariant the current
+  patch's tier approach violates (the budget-120/150 counterexample this todo already found).
+- **Determinism is a separate, equally load-bearing criterion**: same corpus + same query + same
+  budget → byte-identical result set across runs. Not previously stated as a requirement anywhere
+  in this todo's own analysis.
+- **Corroborating measurement, independent corpus:** SPEC-01 cites 82% zero-edge queries before /
+  5% after (regression suite) and a separate `bootstrap-terraform` measurement of 68% planning-doc
+  share — both from a different investigation than this todo's `auth`/727-seed measurement, same
+  phenomenon.
+
+Practical effect: the counterexample fixture this todo already built
+(`4.3b-seedfloor-counterexample.cjs`) should be extended into two standing tests — one for
+monotonicity (sweep budgets, assert non-decreasing edge count) and one for determinism (repeat the
+same query N times, assert byte-identical JSON) — not just the single hand-built RED case.
+
 ## Cross-references
 
 - Analysis: runbook §4.3b · scoring input: 4.3 todo · hop mechanism: 4.4 todo
+- SPEC unit + fix contract: `~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` R1, acceptance criteria

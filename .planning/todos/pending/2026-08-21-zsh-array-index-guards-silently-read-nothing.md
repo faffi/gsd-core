@@ -357,3 +357,17 @@ shim" gives a false pass.
 `hooks/*.sh` carry `#!/usr/bin/env bash` and use `BASH_REMATCH` legitimately. Out of scope IF
 invoked via their own shebang — the wiring through `managed-hooks-registry.cjs`/`build-hooks.js`
 was not traced. If any hook is invoked as `sh script.sh`, re-audit.
+
+## A second correct reference implementation exists — not yet in this repo
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-05-concurrent-cross-ai-review.md` (Risks section) independently
+documents the same word-split class this todo's "FOUR NEW FAILURE MODES" section covers: `wait
+$PIDS` unquoted passes ONE argument under zsh, fails silently (`wait: job not found`), returns in
+~7ms, and reports every still-running background lane as EMPTY with exit status **0** — worse than
+a crash, because it looks like success. The fix is the array form (`PIDS=()` / `PIDS+=($!)` / `wait
+"${PIDS[@]}"`), used correctly in the `gsd-review-concurrent` skill
+(`.planning/todos/pending/2026-08-25-implement-gsd-review-concurrent-as-a-tracked-skill.md`,
+property 4 — "written by someone who hit the bug in production and measured it"). That skill exists
+today only at `$HOME/.claude/skills/gsd-review-concurrent/SKILL.md`, untracked in any repo — so this
+is a second correct implementation to cite as prior art (alongside `review.md:248-273`) once it
+lands in this repo, not a new site to fix here.
