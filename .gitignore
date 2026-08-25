@@ -53,6 +53,15 @@ RAILROAD_ARCHITECTURE.md
 !.planning/PROJECT.md
 !.planning/ROADMAP.md
 !.planning/STATE.md
+!.planning/REQUIREMENTS.md
+!.planning/MILESTONES.md
+# Phase and milestone-archive trees. Without these the whole lifecycle output —
+# every PLAN.md, SUMMARY.md and VERIFICATION.md — is untracked and destroyed by
+# the next `git checkout -B working next` rebuild. They are deliberately kept OUT
+# of upstream PRs by /gsd-pr-branch, which cherry-picks with path filtering, so
+# tracking them here costs nothing at contribution time.
+!.planning/phases/
+!.planning/milestones/
 
 # Personal patch (same branch): re-include our own CLAUDE.md, negating the bare
 # `CLAUDE.md` exclusion further up. Upstream ignores it because CONTEXT.md is the
