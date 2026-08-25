@@ -37,7 +37,9 @@ drift that the next `make install` destroys.
       directory removed entirely, and the directory surviving empty because a `.DS_Store` made
       `rmdirSync` throw into a swallowing catch
 - [ ] **WS-03**: One shared predicate serves every guarded verb — a caller cannot find two verbs
-      disagreeing about whether the project is in workstream mode
+      disagreeing about whether the project is in workstream mode. Scope for v1.12 is the three
+      guard sites only (`init.progress`, `phase.complete`, `state advance-plan`); the predicate
+      lives in `planning-workspace.cts` so the fail-safe paths cannot drift, per #2028's precedent
 - [ ] **WS-04**: The refusal names which marker failed and why, in machine-readable JSON, so a
       calling agent can branch on it without parsing prose
 - [ ] **WS-05**: A pointer-resolved authoritative **read** reports the non-resolution as a field
@@ -121,6 +123,8 @@ Deferred past v1.12. Tracked, not in this roadmap.
 
 | Excluded | Reason |
 |---|---|
+| Guarding `roadmap.*` | Zero `planningDir(cwd)` sites in `src/roadmap.cts` and no reproduced defect. With no defect evidence it reclassifies from fix to **enhancement**, triggering the `approved-enhancement` pre-approval gate at `CONTRIBUTING.md:54-62` — a materially heavier path for no measured benefit |
+| Guarding the remaining `state.*` / `phase.*` verbs in v1.12 | No issue describes the verb *families*, so it would breach `CONTRIBUTING.md:199` ("scope matches the approved issue"). Upstream has guarded exactly two verbs in four months, one per PR |
 | Hoisting the guard into the CLI dispatcher | Would refuse in read-only `workstream` verbs, making a dangling pointer undiagnosable from the CLI. Top-ranked anti-feature in the research |
 | Adding refusals to all ~25 Class B verbs | A behaviour change, not a defect fix — they get the surfaced field instead |
 | Normalising `cmdStateAdvancePlan`'s existing exit-0 paths | ADR-2980 declined it on measured blast radius: 60 sites, 170 `output` callers. The mixed contract is ratified, not accidental |
@@ -138,7 +142,7 @@ is trying to avoid. Where a phase spans independent surfaces, split it:
 
 | Phase | PR split |
 |---|---|
-| Workstream resolution | **PR-A** shared predicate + `init`/`phase` sites · **PR-B** `state advance-plan` (supersedes WIP `f72f1534`) · **PR-C** `workstream complete` honesty |
+| Workstream resolution | **PR-A** the corrected predicate in `planning-workspace.cts` + all three guard sites (`init.cts:2926`, `phase.cts:2212`, `state advance-plan`; supersedes WIP `f72f1534`) — ONE concern, three sites, matching `51dfa683` (#2028) · **PR-C** `workstream complete` honesty, a separate concern per `CONTRIBUTING.md:195` |
 | Port campaign | **PR-1** graphify chain (`4-4` → `4-3` → `4-3b`, shared surface, must stay together) · **PR-2** glab migration · **PR-3** small independents (4.2, 4.6, 4.7) |
 | Fence portability | **PR-1** harness (red locally) + the 11 site fixes, green on arrival · **PR-2** the ratchet lint |
 
