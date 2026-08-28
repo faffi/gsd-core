@@ -9,7 +9,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 .PHONY: help sync-next feature update-feature list-features \
         rebuild-working push-working sync new-pr verify status clean-merged guard-clean \
-        build install install-test
+        build install install-test guard-build-ref
 
 ORIGIN := origin
 FORK   := fork
@@ -106,7 +106,7 @@ new-pr: ## Start a contribution branch — make new-pr TYPE=fix ISSUE=1234 SLUG=
 # `npx -y --package=@opengsd/gsd-core@TAG`, installs upstream's tree, and drops
 # every local feature. Use `make sync` then `make install` instead.
 
-build: ## Compile gitignored tsc output into gsd-core/bin/lib (required before install)
+build: guard-build-ref ## Compile gitignored tsc output into gsd-core/bin/lib (required before install)
 	@printf "$(CYAN)→ npm run build$(RESET)\n"
 	@npm run build >/dev/null || (printf "$(RED)✗ build failed — rerun without the quiet redirect to see why$(RESET)\n"; exit 1)
 	@test -f gsd-core/bin/lib/install-scope.cjs || \
@@ -162,4 +162,36 @@ clean-merged: ## Delete local/* feature branches already merged into next
 
 guard-clean:
 	@git diff --quiet && git diff --cached --quiet || \
-		(printf "$(RED)✗ uncommitted changes — commit or stash first$(RESET)\n"; exit 1)
+		(printf "$(RED)✗ uncommitted changes — commit or stash first$(RESET)\n"; \
+		 printf "$(YELLOW)  (override: make <target> FORCE=1)$(RESET)\n"; \
+		 test -n "$(FORCE)" || exit 1)
+	@# `git diff` only sees TRACKED files. A tree holding nothing but new, untracked
+	@# files passes both checks above — and `rebuild-working` does `checkout -B working
+	@# next`, so a new .planning/ file written on a feature branch is left stranded on
+	@# whatever branch happens to be checked out next. Verified: a repo whose only
+	@# change is one untracked file passes `git diff --quiet && git diff --cached --quiet`.
+	@# --exclude-standard honours .gitignore, so build output and config.json stay quiet.
+	@test -z "$$(git ls-files --others --exclude-standard)" || \
+		(printf "$(RED)✗ untracked files — commit or remove them first:$(RESET)\n"; \
+		 git ls-files --others --exclude-standard | sed 's/^/    /'; \
+		 printf "$(YELLOW)  (override for a genuinely throwaway file: make <target> FORCE=1)$(RESET)\n"; \
+		 test -n "$(FORCE)" || exit 1)
+
+guard-build-ref:
+	@# `gsd-core/bin/lib/` is gitignored build output that only regenerates when absent,
+	@# so it silently outlives the branch it was compiled from. Building on `next`
+	@# compiles PRISTINE UPSTREAM into it while a feature branch's src/ says something
+	@# else — source and runtime then disagree with nothing to reveal it. That exact
+	@# condition is live in this repo right now: bin/lib/state.cjs carries an
+	@# advance-plan workstream guard that src/state.cts does not have, left over from a
+	@# build of an unmerged WIP branch. Refuse rather than warn.
+	@if [ "$$(git branch --show-current)" = "next" ]; then \
+		printf "$(RED)✗ refusing to build on next — it is the pristine upstream mirror.$(RESET)\n"; \
+		printf "  Building here compiles UPSTREAM source into gitignored gsd-core/bin/lib/,\n"; \
+		printf "  which then outlives the checkout and disagrees with your feature branch.\n"; \
+		printf "$(YELLOW)  Switch to working or a local/* branch, or: make build FORCE=1$(RESET)\n"; \
+		test -n "$(FORCE)" || exit 1; \
+	fi
+	@if [ "$$(git branch --show-current)" != "working" ]; then \
+		printf "$(YELLOW)⚠ building $$(git branch --show-current), not working — bin/lib will hold ONE feature, not the integrated set$(RESET)\n"; \
+	fi
