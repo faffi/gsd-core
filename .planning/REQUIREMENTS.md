@@ -91,8 +91,18 @@ drift that the next `make install` destroys.
 - [ ] **PORT-03**: The statusline reports against the model's real context window
 - [ ] **PORT-04**: graphify scores seeds by match quality, and budget-cliff uses per-edge hop distance
 - [ ] **PORT-05**: The glab forge port is live rather than inert, and runs on 1.11.0
-- [ ] **PORT-06**: Review-lane timeouts and convergence routing carry their intended values rather
-      than being inert as specified
+- [ ] **PORT-06**: Review-lane timeouts carry their intended value at the layer that actually bounds
+      the invocation, rather than being inert as specified
+- [ ] **PORT-07**: Convergence max-cycles and concurrent-review routing are live rather than inert,
+      and the workflow's own success criteria agree with its executable prompt
+- [ ] **PORT-08**: The planner consumes the `MEMORY-RECALL.md` that its declared `plan:pre` producer
+      writes
+
+> **Split/added 2026-08-25, when the roadmap was re-cut to one phase per todo.** `PORT-06` was
+> compound (*"timeouts **and** convergence routing"*) — written when both todos shared one bucket
+> phase; `port-4-7` and `port-4-8` are separate todos and now separate phases, so the routing half
+> became `PORT-07`. `PORT-08` is new: `port-4-10` is captured work that no requirement covered — it
+> was carried only inside a phase note. v1.12 requirement count is therefore **34**, not 32.
 
 ### Reporting correctness
 
@@ -142,50 +152,65 @@ is trying to avoid. Where a phase spans independent surfaces, split it:
 
 | Phase | PR split |
 |---|---|
-| Workstream resolution | **PR-A** the corrected predicate in `planning-workspace.cts` + all three guard sites (`init.cts:2926`, `phase.cts:2212`, `state advance-plan`; supersedes WIP `f72f1534`) — ONE concern, three sites, matching `51dfa683` (#2028) · **PR-C** `workstream complete` honesty, a separate concern per `CONTRIBUTING.md:195` |
-| Port campaign | **PR-1** graphify chain (`4-4` → `4-3` → `4-3b`, shared surface, must stay together) · **PR-2** glab migration · **PR-3** small independents (4.2, 4.6, 4.7) |
-| Fence portability | **PR-1** harness (red locally) + the 11 site fixes, green on arrival · **PR-2** the ratchet lint |
+| Phase 5 — workstream resolution | **PR-A** the corrected predicate in `planning-workspace.cts` + all three guard sites (`init.cts:2926`, `phase.cts:2212`, `state advance-plan`; supersedes WIP `f72f1534`) — ONE concern, three sites, matching `51dfa683` (#2028) · **PR-B** the read surface (`output()` field + `workstream get` → peek) · **PR-C** `workstream complete` honesty, a separate concern per `CONTRIBUTING.md:195` |
+| Phase 4 — fence portability | **PR-1** harness (RED locally) + the 11 site fixes, green on arrival · **PR-2** the ratchet lint |
+| Phase 11 — graphify chain | One PR, three plans in fixed order (`4-4` → `4-3` → `4-3b`) — shared `ExpandResult` type, must stay together |
+| Phase 18 — glab migration | One PR, the largest `ship.md` change; last, to minimise conflicts with Phase 7's routing sweep |
+| Phases 12–17 — the small independents | One PR each. They were "PR-3, small independents" only because they shared a bucket phase; as their own phases each is already one concern |
 
 ## Traceability
 
-Mapped during roadmap creation (2026-08-24). All 32 v1.12 requirements map to exactly one phase.
+Re-mapped 2026-08-25, when the roadmap was re-cut from 6 bucket phases to 18 (one phase per todo).
+All 34 v1.12 requirements map to exactly one phase, and every phase carries at least one requirement.
 
 | Requirement | Phase | Status |
 |---|---|---|
 | INST-01 | Phase 1 | Pending |
-| INST-02 | Phase 1 | Pending |
+| INST-02 | Phase 4 | Pending |
 | INST-03 | Phase 4 | Pending |
-| INST-04 | Phase 1 | Pending |
-| INST-05 | Phase 1 | Pending |
-| WS-01 | Phase 2 | Pending |
-| WS-02 | Phase 2 | Pending |
-| WS-03 | Phase 2 | Pending |
-| WS-04 | Phase 2 | Pending |
-| WS-05 | Phase 2 | Pending |
-| WS-06 | Phase 2 | Pending |
-| WS-07 | Phase 2 | Pending |
-| WS-08 | Phase 2 | Pending |
-| STATE-01 | Phase 3 | Pending |
+| INST-04 | Phase 2 | Pending |
+| INST-05 | Phase 2 | Pending |
+| WS-01 | Phase 5 | Pending |
+| WS-02 | Phase 5 | Pending |
+| WS-03 | Phase 5 | Pending |
+| WS-04 | Phase 5 | Pending |
+| WS-05 | Phase 5 | Pending |
+| WS-06 | Phase 5 | Pending |
+| WS-07 | Phase 5 | Pending |
+| WS-08 | Phase 5 | Pending |
+| STATE-01 | Phase 6 | Pending |
 | SHELL-01 | Phase 4 | Pending |
 | SHELL-02 | Phase 4 | Pending |
 | SHELL-03 | Phase 4 | Pending |
 | SHELL-04 | Phase 4 | Pending |
-| ROUTE-01 | Phase 5 | Pending |
-| ROUTE-02 | Phase 5 | Pending |
-| ROUTE-03 | Phase 5 | Pending |
-| INSTALL-01 | Phase 1 | Pending |
-| INSTALL-02 | Phase 1 | Pending |
-| PORT-01 | Phase 6 | Pending |
-| PORT-02 | Phase 6 | Pending |
-| PORT-03 | Phase 6 | Pending |
-| PORT-04 | Phase 6 | Pending |
-| PORT-05 | Phase 6 | Pending |
-| PORT-06 | Phase 6 | Pending |
-| REPORT-01 | Phase 6 | Pending |
-| REPORT-02 | Phase 6 | Pending |
-| REPORT-03 | Phase 5 | Pending |
+| ROUTE-01 | Phase 7 | Pending |
+| ROUTE-02 | Phase 8 | Pending |
+| ROUTE-03 | Phase 7 | Pending |
+| INSTALL-01 | Phase 3 | Pending |
+| INSTALL-02 | Phase 3 | Pending |
+| PORT-01 | Phase 11 | Pending |
+| PORT-02 | Phase 14 | Pending |
+| PORT-03 | Phase 15 | Pending |
+| PORT-04 | Phase 11 | Pending |
+| PORT-05 | Phase 18 | Pending |
+| PORT-06 | Phase 12 | Pending |
+| PORT-07 | Phase 13 | Pending |
+| PORT-08 | Phase 10 | Pending |
+| REPORT-01 | Phase 16 | Pending |
+| REPORT-02 | Phase 17 | Pending |
+| REPORT-03 | Phase 9 | Pending |
 
-**Coverage:** 32/32 mapped, 0 orphans, 0 duplicates.
+**Coverage:** 34/34 mapped, 0 orphans, 0 duplicates. 20 todos → 18 phases.
+
+Two todos are deliberately unmapped and get no phase and no requirement:
+`build-a-handoff-skill-that-merges-rather-than-regenerates` (SEED-001 — an enhancement, tracked as
+`TOOL-F02`) and `port-4-5-graphify-exclude-file-types-flag` (corpus membership vs retrieval
+eligibility).
+
+One known text weakness, deliberately not repaired here: `REPORT-03` is the only requirement on
+Phase 9, and it delivers the `escape-description` blocker only because that todo's preferred fix
+routes the row through the same single writer. If the escaping is to be named in its own right, add
+`REPORT-04` — the roadmap declined to invent it.
 
 Future Requirements (`WS-F01`, `WS-F02`, `TOOL-F01`, `TOOL-F02`) are deferred past v1.12 and are
 deliberately absent from this table.
