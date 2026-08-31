@@ -147,9 +147,15 @@ docstring already documents the exact failure class.
 **This is a distinct, broader defect from the `Stopped At` overwrite above** — it affects
 **every** caller of `state record-session`, not just the hook's auto-record, whenever the
 project has manually-curated or cross-milestone progress counters that a plain disk rescan
-wouldn't reproduce. Concrete, precedented fix: pass `{ resync: false }` at
-`cmdStateRecordSession`'s `readModifyWriteStateMd` call (`src/state.cts:1640`), matching
-the pattern `state.update` already uses for the same reason.
+wouldn't reproduce.
+
+**Promoted to its own todo, 2026-08-31**, after `gsd-core-working` asked whether this is one
+missed call site or several: **`2026-08-31-state-verbs-default-to-resync-true-dropping-progress-counters.md`**.
+An empirical sweep of 9 `state.cts` verbs found 6 confirmed to clobber `progress.*` the same
+way (`record-metric`, `add-decision`, `add-blocker`, `add-roadmap-evolution`,
+`resolve-blocker`, plus `record-session` here) — a systemic gap (the fix policy is applied
+at only 2 of ~14 call sites), not an isolated oversight. Full evidence and the fix
+recommendation live in that todo; this section is kept for provenance of how it was found.
 
 ## Damage inventory (per claude-71, not independently re-verified in this repo)
 
