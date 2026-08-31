@@ -65,6 +65,14 @@ systemic gap, not an isolated oversight in `record-session`.
 
 ## Fix
 
+**Read this section's argument as the reason to act, not the sweep above.** The empirical
+sweep establishes the *mechanism* (resync-on-write silently drops progress counters) and
+made the seven affected sites findable. It does not, by itself, establish that exactly
+seven is the right number to fix — "we tested seven and they clobbered" invites "did you
+test enough?" The argument below does not depend on how many verbs were tested: it shows
+that these seven **cannot** hit the resync trigger, structurally, regardless of fixture or
+test coverage. That's what closes the question, not the count.
+
 **Simplified 2026-08-31, by `gsd-core-working`, verified directly.** `shouldResyncStateProgress`
 (`src/state.cts:307-313`) only returns `true` when the fields being written intersect a
 three-field trigger set, `STATE_PROGRESS_RESYNC_FIELDS = new Set(['Progress', 'Total Plans
