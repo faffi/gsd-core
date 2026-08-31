@@ -69,6 +69,36 @@ downstream artifact check) then have a field to check instead of inferring from 
 No behavior change required for existing callers — this is purely an additive,
 disambiguating field.
 
+## Addendum 2026-08-30 — verify-work.md checked; cnc's follow-up partially corrected back
+
+cnc later re-audited by ref-counting `phase_found` vs `phase_dir` per workflow and
+reported `secure-phase.md`/`validate-phase.md` as "real exposure" (zero `phase_found`
+refs) and `verify-work.md` as parsing `phase_dir` 18× with no branch on it.
+
+**secure-phase.md / validate-phase.md are not newly exposed** — this todo already
+verified (see Problem section above) that both fail closed via the same
+SUMMARY.md-presence check family as `extract-learnings.md:36`, just gated on artifact
+presence rather than on `phase_found` directly. Zero `phase_found` refs does not imply
+unguarded; it means the guard is expressed differently. Corrected back to cnc.
+
+**verify-work.md is a real, but different, gap than claimed** — checked directly:
+`find_summaries` step (`:165-172`) reads
+```bash
+ls "$phase_dir"/*-SUMMARY.md 2>/dev/null || true
+```
+but `$phase_dir` (lowercase) is **never assigned anywhere in this file** — every actual
+assignment in the file (`:71`, `:616`) is `PHASE_DIR` (uppercase), matching every other
+reference in the file (`:88-92`, `:204`, `:221`, `:269`). So this isn't "no guard for the
+null-`phase_dir`-after-archive case" as cnc framed it — it's a plain variable-name typo
+that makes `find_summaries` glob against `/*-SUMMARY.md` (root) **unconditionally**,
+independent of whether the phase is archived, unplanned, or normal. No downstream guard
+was found that checks for an empty summaries list after this step (unlike
+`extract-learnings.md:36`'s explicit empty-artifacts exit). Not yet traced far enough to
+confirm the full blast radius (e.g. whether `extract_tests` or later steps silently
+no-op on zero summaries, or error) — flagging as a distinct defect worth its own
+follow-up rather than folding it into this API-shape fix, since the root cause and file
+are unrelated to `init.phase-op`'s archived/unplanned collapse.
+
 ## Cross-references
 
 - Reported by peer session `cnc` (cross-session message, 2026-08-29), as part of a
