@@ -1,14 +1,16 @@
 ---
 created: 2026-08-30T00:00:00.000Z
 corrected: 2026-08-31T00:00:00.000Z
-title: "gsd-context-monitor.js auto-records CRITICAL-context state via state record-session, unconditionally overwriting STATE.md's Stopped At narrative"
+title: "gsd-context-monitor.js auto-records CRITICAL-context state via state record-session — which also runs with resync:true, a known bug (#3242 Bug A) that rebuilds progress.* from disk on every call"
 area: hooks
 severity: blocker
 scope: Small
-scope_note: The auto-record block is 20 lines in one file; the fix is delete-it-and-let-the-user-run-pause-work (already applied as a local patch elsewhere) or make it preserve/append instead of overwrite — either way a single-file, single-behavior change
+scope_note: Two independent, separately-fixable defects at the same call site — deleting/gating the hook's auto-record block is one small change, and passing {resync:false} to cmdStateRecordSession's readModifyWriteStateMd call (matching state.update's existing pattern) is a one-line fix for the broader progress-counter defect
 files:
   - hooks/gsd-context-monitor.js:142-163 (the auto-record block — spawns `state record-session --stopped-at "context exhaustion at N% (date)"` unconditionally on first CRITICAL reading)
-  - src/state.cts:1656-1658 (cmdStateRecordSession / stateReplaceField — a straight field replace, no merge or preserve-existing-content logic; not itself buggy, just not designed to be called with a disposable auto-generated value)
+  - src/state.cts:1656-1658 (cmdStateRecordSession / stateReplaceField — a straight field replace, no merge or preserve-existing-content logic for `Stopped At` specifically)
+  - src/state.cts:1640 (cmdStateRecordSession's `readModifyWriteStateMd` call — no options passed, so `resync` defaults to `true`, rebuilding the entire frontmatter including `progress.*` from disk on every call)
+  - src/state.cts (`readModifyWriteStateMd`'s own JSDoc, directly above its definition — documents `resync:true`'s "trample manually-curated cross-milestone progress.* counters" failure as the already-numbered #3242 Bug A, and the `{resync:false}` fix `state.update` already applies)
 ---
 
 ## ⚠ CORRECTED 2026-08-31 — the original root cause below was wrong
@@ -75,29 +77,79 @@ which records a real stopping point." That's the correct minimal fix for this re
 advisory message (a few lines below, already present) to prompt the user/agent toward
 `/gsd:pause-work` instead of writing anything automatically.
 
-Alternative, if the "breadcrumb for `/gsd:resume-work`" behavior is worth keeping: make the
-write non-destructive using a primitive that already exists in this codebase for exactly
-this shape of problem. `src/state-document.cts:802` exports
-`stateReplaceFieldIfTemplate(content, field, knownDefaults, newValue)` — it only overwrites
-a field when its *current* value matches a known, handler-generated default, leaving any
-richer/executor-authored content alone. `cmdStateRecordSession` (`src/state.cts:1665-1684`)
-already uses exactly this primitive to protect **Resume File** on the line immediately
-after `Stopped At` — but only in the "caller omitted `--resume-file`" branch; when the
-caller passes an explicit value, `Resume File` is overwritten unconditionally too, the same
-as `Stopped At` is today. So the precedent is real but not a literal drop-in: `Stopped At`
-also has **no entry in `KNOWN_TEMPLATE_DEFAULTS`** (`src/state-document.cts:691-717`,
-checked directly — only `Resume File`, `Status`, `Last Activity` have one) and the hook
-always passes an *explicit* `--stopped-at` value, so protecting it means calling
-`stateReplaceFieldIfTemplate` unconditionally against a new `KNOWN_TEMPLATE_DEFAULTS['Stopped At']`
-list (e.g. `['None']` or whatever the template's initial value is), not gating on
-omission the way `Resume File` does. Same primitive, small new table entry, one changed
-call site — still smaller and more precedented than a bespoke solution, just not
-byte-for-byte identical to the `Resume File` case.
+**RETRACTED 2026-08-31 — do not apply `stateReplaceFieldIfTemplate` to `Stopped At`.** An
+earlier version of this section proposed gating `Stopped At` through
+`stateReplaceFieldIfTemplate` (`src/state-document.cts:802`) the way `Resume File` is
+gated, on the theory that the same "only overwrite a known template default" protection
+would apply. `gsd-core-working` (cross-session message, 2026-08-31) caught the flaw and it
+was verified directly: `Resume File`'s guard only fires in the branch where the caller
+*omits* `--resume-file` (`src/state.cts:1670-1678` — "Caller explicitly passed a value —
+always honour it" governs the explicit-value branch, unconditional `stateReplaceField`,
+same as `Stopped At`). Applying the guard to `Stopped At` unconditionally — the only way to
+protect it, since the hook always passes an explicit value — would silently no-op the four
+**legitimate** callers (`execute-plan.md`, `discuss-phase-assumptions.md`,
+`milestone-summary.md`, `ui-phase.md`) every time the existing value isn't already a
+template default, i.e. every normal multi-plan session after the first stop is recorded.
+That converts a real, intended overwrite into a silent no-op at exactly the moment a real
+stop most needs recording. As `cnc` put it: the verb isn't the defect, the caller is — a
+workflow passing `--stopped-at` *intends* to overwrite; that's the correct contract for
+every caller except the hook. Guarding the verb degrades every correct caller to defend
+against one incorrect one.
 
-No preference between delete-the-block and make-it-non-destructive stated here — flagged by
-`gsd-core-working` (cross-session message, 2026-08-31) that a breadcrumb written at the
-exact moment of context degradation may be the wrong thing to write unguarded regardless,
-favoring deletion. Whoever implements this should decide.
+The two options that remain: **delete the auto-record block** (simplest; the existing
+CRITICAL advisory message already tells the user to run `/gsd:pause-work`), or **make the
+hook's own call opt into non-destructive behavior via a new flag** (e.g.
+`--only-if-template`) that only the hook passes, leaving the four legitimate callers'
+contract untouched by construction. `gsd-core-working` leans deletion — a breadcrumb
+written at the exact moment of context degradation is the worst-timed write to leave
+unguarded, and the CRITICAL message's own text already says GSD state is tracked
+elsewhere, making the breadcrumb largely redundant. No implementation decision made here;
+left to whoever picks this up.
+
+## A second, more severe defect found while answering "does this also clobber progress
+counters?" — confirmed 2026-08-31
+
+`cnc` separately observed, in a live incident, that the same `state record-session` call
+also changed `completed_phases` (4→1) and `percent` (50→13) — fields `cmdStateRecordSession`
+never touches directly. `gsd-core-working` traced 180 lines of `cmdStateRecordSession`
+looking for a progress-recompute call, found none, and flagged it as unresolved — the
+right instinct, but the trace stopped one layer too early.
+
+**Confirmed by reading the write path one level down, plus an empirical repro.**
+`cmdStateRecordSession`'s write goes through `readModifyWriteStateMd(statePath, callback)`
+(`src/state.cts:1640`, no options object passed) → `syncAndPreserveStateMd` →
+`syncStateFrontmatter`. `readModifyWriteStateMd`'s own JSDoc (`src/state.cts`, directly
+above its definition) states explicitly:
+
+> `resync`: when true (**default**) rebuilds the **entire frontmatter from disk** after
+> the transform. Pass `{ resync: false }` for body-only updates (e.g. `state.update` on a
+> single field) that **must not trample manually-curated cross-milestone `progress.*`
+> counters** in the frontmatter (**#3242 Bug A**).
+
+`cmdStateRecordSession` calls `readModifyWriteStateMd` with **no options**, so `resync`
+defaults to `true` — the exact behavior the docstring names as the cause of a
+**pre-existing, already-numbered bug (#3242 Bug A)**. `state.update` already carries the
+`{ resync: false }` fix for this; `cmdStateRecordSession` does not.
+
+Reproduced directly (`env -u GSD_AGENTS_DIR node gsd-core/bin/gsd-tools.cjs state
+record-session --stopped-at "..."` against a synthetic `.planning/STATE.md` seeded with a
+`progress:` block): the `completed_phases`/`percent` block present before the call was gone
+after it, and the frontmatter shape changed beyond the three session fields
+(`gsd_state_version`, `status`, `last_updated` were rewritten from scratch). The fixture
+lacked real `.planning/phases/` directories, so this specific repro shows the progress
+block going to *absent* rather than reproducing cnc's exact *wrong-but-present* numbers
+(4→1, 50→13) — that more precise numeric mismatch is consistent with a cross-milestone or
+workstream scope where the disk-rescan and the manually-curated value disagree, which a
+minimal single-directory fixture can't reconstruct. The mechanism, though, is confirmed,
+not inferred: `resync: true` is in effect on every `state record-session` call, and its own
+docstring already documents the exact failure class.
+
+**This is a distinct, broader defect from the `Stopped At` overwrite above** — it affects
+**every** caller of `state record-session`, not just the hook's auto-record, whenever the
+project has manually-curated or cross-milestone progress counters that a plain disk rescan
+wouldn't reproduce. Concrete, precedented fix: pass `{ resync: false }` at
+`cmdStateRecordSession`'s `readModifyWriteStateMd` call (`src/state.cts:1640`), matching
+the pattern `state.update` already uses for the same reason.
 
 ## Damage inventory (per claude-71, not independently re-verified in this repo)
 
