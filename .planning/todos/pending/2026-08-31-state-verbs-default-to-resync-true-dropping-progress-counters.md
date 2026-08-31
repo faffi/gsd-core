@@ -1,6 +1,6 @@
 ---
 created: 2026-08-31T00:00:00.000Z
-title: "6 of 9 audited state.cts verbs default to resync:true and silently drop progress.* counters on write — the #3242 Bug A fix (resync:false) is applied at only 2 of ~14 call sites"
+title: "7 of 9 audited state.cts verbs default to resync:true and silently drop progress.* counters on write — the #3242 Bug A fix (resync:false) is applied at only 2 of ~14 call sites"
 area: tooling
 severity: blocker
 scope: Medium
@@ -12,6 +12,7 @@ files:
   - src/state.cts (cmdStateAddBlocker's readModifyWriteStateMd call — no options, confirmed clobbers by empirical repro)
   - src/state.cts (cmdStateAddRoadmapEvolution's readModifyWriteStateMd call — no options, confirmed clobbers by empirical repro)
   - src/state.cts (cmdStateResolveBlocker's readModifyWriteStateMd call — no options, confirmed clobbers by empirical repro, re-tested with a real blocker to resolve)
+  - src/state.cts:5438-5495 (cmdStatePrune — non-dry-run write path confirmed clobbers; --dry-run branch never calls readModifyWriteStateMd at all)
   - src/state.cts:201 (doc comment stating the intended policy: resync should be computed via `shouldResyncStateProgress`, not defaulted)
   - src/state.cts:650,785 (cmdStatePatch, cmdStateUpdate — the two verbs that DO compute resync correctly, both via a `shouldResync`-shaped computed value, which is why a literal-string `grep "resync: false"` misses one of them)
 ---
@@ -53,14 +54,14 @@ their real CLI subcommands against a fresh copy of the fixture each time, then d
 | `cmdStateAddRoadmapEvolution` | `state add-roadmap-evolution --phase --action --note` | **clobbers** | wrote successfully, `progress:` block absent after |
 | `cmdStateResolveBlocker` | `state resolve-blocker --text` | **clobbers** | re-tested with a real blocker present to resolve (first pass was a false-negative no-op — nothing to resolve); wrote successfully, `progress:` block absent after |
 | `cmdStateUpdateProgress` | `state update-progress` | **inconclusive** | no-op against this fixture (`false`, file never written) — needs real on-disk phase/plan data to exercise meaningfully; likely SHOULD touch progress by design, not a clear defect candidate |
-| `cmdStatePrune` | `state prune --dry-run` | **inconclusive** | no-op — fixture had no metrics history old enough to prune; not re-tested without `--dry-run` |
+| `cmdStatePrune` | `state prune --keep-recent 3` (no `--dry-run`, real `- [Phase 2] ...` entry seeded) | **clobbers** | resolved below — `--dry-run` structurally cannot write; the real write path does, confirmed |
 | `cmdStateRebuild` | `state rebuild` (no `--dry-run`) | **inconclusive** | no-op even without dry-run against this fixture (`false`) — rebuild is explicitly meant to reconstruct frontmatter, so not a "should preserve" candidate regardless |
 
-**6 of 9 tested verbs confirmed to silently drop `progress.*` on write; the 3 inconclusive
-ones are inconclusive because the fixture gave them nothing to do, not because they were
-shown safe.** This confirms `gsd-core-working`'s framing: this is not "one call site missed
-the policy," it's "the policy is implemented at 2 of ~14 call sites" — a systemic gap, not
-an isolated oversight in `record-session`.
+**7 of 9 tested verbs confirmed to silently drop `progress.*` on write; the 2 remaining
+inconclusive ones are inconclusive because the fixture gave them nothing to do, not because
+they were shown safe.** This confirms `gsd-core-working`'s framing: this is not "one call
+site missed the policy," it's "the policy is implemented at 2 of ~14 call sites" — a
+systemic gap, not an isolated oversight in `record-session`.
 
 ## Fix
 
@@ -69,45 +70,44 @@ an isolated oversight in `record-session`.
 three-field trigger set, `STATE_PROGRESS_RESYNC_FIELDS = new Set(['Progress', 'Total Plans
 in Phase', 'Total Phases'])` (`src/state.cts:301-305`). Confirmed both real call sites feed
 it exactly the fields being written: `cmdStatePatch:633` passes `Object.keys(patches)`,
-`cmdStateUpdate:766` passes `[field]`. None of the six confirmed-clobbering verbs ever write
-any of those three field names — `record-session` writes session labels, `record-metric`
-writes a metric row, `add-decision`/`add-blocker`/`add-roadmap-evolution`/`resolve-blocker`
-write body sections. So calling the helper at any of the six would provably return `false`
-every time — **"apply the documented policy" and "hardcode `resync: false`" are the same
-change at all six sites**, because none of them can write a progress-trigger field. No
-computed-value threading needed; six literal `{ resync: false }` additions, each
-independently justifiable by the verb's own field set.
+`cmdStateUpdate:766` passes `[field]`. None of the seven confirmed-clobbering verbs ever
+write any of those three field names — `record-session` writes session labels,
+`record-metric` writes a metric row, `add-decision`/`add-blocker`/`add-roadmap-evolution`/
+`resolve-blocker` write body sections, `prune` removes list-item entries. So calling the
+helper at any of the seven would provably return `false` every time — **"apply the
+documented policy" and "hardcode `resync: false`" are the same change at all seven sites**,
+because none of them can write a progress-trigger field. No computed-value threading needed;
+seven literal `{ resync: false }` additions, each independently justifiable by the verb's
+own field set.
 
 **Keep the default-inversion question separate.** `readModifyWriteStateMd` still defaults to
 `resync: true`, so the *next* verb added to this module inherits the same defect silently —
 that's a distinct, larger-blast-radius concern (changes behavior at every site currently
 relying on the rebuild, including the two below that couldn't be tested) and wants its own
-change and its own tests, not folded into the six-site fix.
+change and its own tests, not folded into the seven-site fix.
 
-**Shape of the recommended fix: one PR, six sites, six tests** — concern: "state verbs that
-cannot write a progress-trigger field must not trigger a frontmatter rebuild." The
+**Shape of the recommended fix: one PR, seven sites, seven tests** — concern: "state verbs
+that cannot write a progress-trigger field must not trigger a frontmatter rebuild." The
 default-inversion becomes a follow-up, with the two untestable verbs (`update-progress`,
 `rebuild`) as its open question.
 
-## Remaining before implementation — the three inconclusive verbs need a fixture that
-actually exercises them
+## `prune` resolution — read `state-transition.cts` directly rather than guessing fixtures again
 
-The empirical sweep's three "inconclusive" rows (`update-progress`, `prune`, `rebuild`) were
-no-ops against the fixture used (nothing to prune, nothing new to compute, no drift to
-reconcile) — not evidence of safety. `update-progress` and `rebuild` are plausibly *meant*
-to rebuild by design, so may not be defect candidates regardless of what a better fixture
-would show. `prune` is the genuinely open one — worth one more attempt with a fixture that
-seeds actual prunable metrics history (old enough to exceed `--keep-recent`) before ruling
-on whether it belongs in the six-site fix or is correctly exempt.
+`gsd-core-working` found two independent reasons the first two `prune` attempts no-op'd:
+(1) `cmdStatePrune`'s `--dry-run` branch (`state.cts:5480-5495`) reads the file directly and
+never calls `readModifyWriteStateMd` at all — structurally cannot write, so any `--dry-run`
+attempt is void regardless of fixture; (2) the non-dry-run path's prunable-entry predicates
+match **list-item lines**, not section headings — `## Decisions` (or `Decisions Made` /
+`Accumulated...Decisions`) requires entries shaped `- [Phase N] ...`; `## Metrics` is not a
+prunable section at all (no `pruneSectionSpan` call for it), so seeding entries there was
+always inert. Final run, matching both constraints (`current_phase: 10`, `## Decisions` with
+a real `- [Phase 2] ...` entry, `--keep-recent 3`, **no** `--dry-run`): the write succeeded
+(`true`, the decision entry was actually pruned) and the `progress:` block was gone
+afterward. **`prune` clobbers via the same mechanism as the other six.**
 
-**Second attempt, 2026-08-31: still inconclusive.** Retried with `current_phase: 10` and a
-`## Decisions` / `## Metrics` section each carrying a `### Phase 2` entry, `--keep-recent 3`
-(cutoff should be 7). Still returned `false` / no-op — either `resolveCurrentPhaseId` didn't
-pick up the synthetic `**Phase:** 10` line, or the seeded section headings don't match what
-`transitionCore`'s prune logic (`state-transition.cts`) actually scans for. Not chased
-further — getting `prune` to genuinely fire needs reading `transitionCore`'s exact expected
-section/heading shape first rather than more guessing, and this is a secondary completeness
-item, not a blocker for the six-site fix above.
+`update-progress` and `rebuild` remain untested/inconclusive and are plausibly meant to
+rebuild by design — left as the default-inversion follow-up's open question, not chased
+further per `gsd-core-working`'s "wouldn't spend more than one run on this" guidance.
 
 ## Cross-references
 
