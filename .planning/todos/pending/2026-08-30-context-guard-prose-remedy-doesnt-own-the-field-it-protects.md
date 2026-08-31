@@ -1,95 +1,117 @@
 ---
 created: 2026-08-30T00:00:00.000Z
-title: "execute-phase context guard's prescribed remedy (/gsd:pause-work) is prose-only by default AND never writes the STATE.md field it's supposed to protect"
-area: workflows
-severity: major
-scope: Medium
-scope_note: Two independent structural gaps to close (enforce the remedy in warn mode OR make pause-work call the sanctioned state verb) plus deciding which; not a one-line fix, but bounded to gsd-core/references/execute-phase-context-guard.md + gsd-core/workflows/pause-work.md + call sites, no schema change
+corrected: 2026-08-31T00:00:00.000Z
+title: "gsd-context-monitor.js auto-records CRITICAL-context state via state record-session, unconditionally overwriting STATE.md's Stopped At narrative"
+area: hooks
+severity: blocker
+scope: Small
+scope_note: The auto-record block is 20 lines in one file; the fix is delete-it-and-let-the-user-run-pause-work (already applied as a local patch elsewhere) or make it preserve/append instead of overwrite — either way a single-file, single-behavior change
 files:
-  - gsd-core/references/execute-phase-context-guard.md:13 (POOR-tier `warn` mode — "Continue (user decides)"; no enforcement)
-  - gsd-core/workflows/pause-work.md (the guard's prescribed remedy — writes .planning/HANDOFF.json + .continue-here.md ONLY, never touches .planning/STATE.md)
-  - src/state.cts:1656-1658,2136 (cmdStateRecordSession — the actual, sanctioned, non-clobbering writer of frontmatter `stopped_at`)
-  - src/state-command-router.cts:181 (routes `state record-session --stopped-at` to cmdStateRecordSession)
-  - gsd-core/workflows/execute-plan.md:471-480 (the ONLY normal-case call site for `state.record-session --stopped-at`, fired at end-of-plan wrap-up — not reachable from a mid-plan context-pressure event)
+  - hooks/gsd-context-monitor.js:142-163 (the auto-record block — spawns `state record-session --stopped-at "context exhaustion at N% (date)"` unconditionally on first CRITICAL reading)
+  - src/state.cts:1656-1658 (cmdStateRecordSession / stateReplaceField — a straight field replace, no merge or preserve-existing-content logic; not itself buggy, just not designed to be called with a disposable auto-generated value)
 ---
 
-## Problem
+## ⚠ CORRECTED 2026-08-31 — the original root cause below was wrong
 
-Reported by a peer session ("cnc", cross-session message, 2026-08-30), root-caused via
-`grep -rn 'context exhaustion' ~/.claude/gsd-core/`: a phase's `.planning/STATE.md`
-frontmatter `stopped_at` was found overwritten with the literal string
-`context exhaustion at 100% (2026-08-28)` — the context guard's own POOR-tier warning
-phrase with a percentage filled in — destroying a prior closure narrative. Root cause per
-cnc: an execute-phase orchestrator hit the guard, was told to run `/gsd:pause-work`, and
-instead hand-wrote a pause note directly into frontmatter.
+Original filing (2026-08-30) reasoned from the *symptom* (STATE.md's `Stopped At` field
+overwritten with the literal string `context exhaustion at N% (date)`) to a *plausible but
+unverified* mechanism: that the context-pressure guard's prescribed remedy
+(`/gsd:pause-work`) is prose-only and doesn't itself write `STATE.md`, so an agent under
+pressure must have hand-edited the frontmatter directly. That reasoning was never checked
+against the actual hook source — it inferred agent behavior instead of reading the code
+that runs automatically.
 
-Verified in this repo's source (not taken on the peer's word alone):
+**Reported by peer session `claude-71`** (cross-session message, 2026-08-31), with a full
+writeup at their own `~/.claude/reference/gsd-context-monitor-state-md-overwrite.md`
+(their local install, not this repo). **Verified directly in this repo's own source**,
+not taken on their word: `hooks/gsd-context-monitor.js:142-163` —
 
-**1. The guard's remedy is unenforced prose in the default mode.**
-`gsd-core/references/execute-phase-context-guard.md:13` — POOR tier (70%+), `warn` mode
-(the documented default): `Emit: "🛑 Context pressure POOR... Run /gsd:pause-work..."
-Continue (user decides).` Only `auto` mode invokes the remedy programmatically and halts;
-`warn` is text with no binding effect on what the agent does next.
+```js
+// On CRITICAL with active GSD project, auto-record session state as a
+// breadcrumb for /gsd:resume-work (#1974). Fire-and-forget subprocess —
+// doesn't block the hook or the agent. Fires ONCE per CRITICAL session,
+// guarded by warnData.criticalRecorded to prevent repeated overwrites
+// of the "crash moment" record on every debounce cycle.
+if (isCritical && isGsdActive && !warnData.criticalRecorded) {
+  try {
+    const gsdTools = path.join(__dirname, '..', 'gsd-core', 'bin', 'gsd-tools.cjs');
+    const safeUsedPct = Number(usedPct) || 0;
+    const stoppedAt = `context exhaustion at ${safeUsedPct}% (${new Date().toISOString().split('T')[0]})`;
+    spawn(
+      process.execPath,
+      [gsdTools, 'state', 'record-session', '--stopped-at', stoppedAt],
+      { cwd, detached: true, stdio: 'ignore', windowsHide: true }
+    ).unref();
+    warnData.criticalRecorded = true;
+    fs.writeFileSync(warnPath, JSON.stringify(warnData));
+  } catch { /* non-critical — don't let state recording break the hook */ }
+}
+```
 
-**2. Even when followed correctly, the prescribed remedy doesn't own the field that got
-clobbered.** Read `gsd-core/workflows/pause-work.md` in full: it writes
-`.planning/HANDOFF.json` and `.planning/{phases/XX-name,spikes/SPIKE-NNN,}/.continue-here.md`.
-It contains **zero** references to `STATE.md`, `stopped_at`, or `state.record-session`.
-The actual sanctioned, non-clobbering writer of frontmatter `stopped_at` is
-`gsd_run query state.record-session --stopped-at ... --resume-file ...`
-(`src/state.cts:1656-1658` via `src/state-command-router.cts:181`) — but the **only**
-workflow call site for it (`gsd-core/workflows/execute-plan.md:471-480`) fires at normal
-end-of-plan wrap-up (`--stopped-at "Completed {PHASE}-{PLAN}-PLAN.md"`), which a
-context-exhausted agent mid-plan never reaches.
+**No agent improvisation occurred, ever, in this incident class.** The hook itself —
+deterministically, automatically, on the first CRITICAL context reading per session —
+spawns exactly the sanctioned `state record-session --stopped-at` verb
+(`src/state.cts:1656-1658`, `src/state-command-router.cts:181`) with a disposable,
+auto-generated template string. `stateReplaceField` does a straight field replace with no
+merge or preserve-existing-content logic, so whatever richer narrative was already in
+`Stopped At` (e.g. a 1,601-byte phase-closure summary, per the originally reported
+incident) is silently clobbered. This requires no hand-editing, no guard being ignored, and
+no agent decision at all — it fires unconditionally, by design (the code comment says so
+outright: "auto-record session state as a breadcrumb for `#1974`").
 
-So an agent that hits POOR-tier pressure mid-plan and wants to record where it stopped
-has **no sanctioned call available that does that** — `/gsd:pause-work` doesn't touch
-`STATE.md`, and `state.record-session` is only invoked from a step the agent hasn't
-reached yet. The gap between "guard tells you to do X" and "X doesn't write the field
-that actually got corrupted" is what leaves hand-editing frontmatter as the only path
-left, and hand-editing bypasses whatever clobber-protection `cmdStateRecordSession`
-has (`src/state.cts:3405`'s own comment: "silently clobber a fresher frontmatter
-stopped_at").
-
-**3. The trigger itself is unreliable** (corroborating detail, not independently
-verified further here): `execute-phase-context-guard.md:15` states outright "no
-programmatic context-percentage API exists" — the guard fires on self-assessed
-degradation signals, not a measured number. Per cnc, a live warning claimed 100% and was
-manually corrected to 52%.
+The earlier framing (guard remedy is prose, `pause-work.md` doesn't own `stopped_at`) is
+**still factually true as independent observations** — verified directly, see the
+Cross-references below — but it is not what caused this incident, and the fix aimed at it
+(enforce the remedy, or make `pause-work.md` call `state.record-session`) would not have
+prevented this bug, because this bug bypasses the remedy path entirely.
 
 ## Fix
 
-Two independent structural options (pick one, or both):
+Per `claude-71`'s report, this has already been resolved as a **local-only patch** (not
+upstreamed) in their install: delete the auto-record block entirely — "a monitor must not
+write project state; the CRITICAL message already tells the user to run `/gsd:pause-work`,
+which records a real stopping point." That's the correct minimal fix for this repo's own
+`hooks/gsd-context-monitor.js` too: remove lines 142-163, rely on the existing CRITICAL
+advisory message (a few lines below, already present) to prompt the user/agent toward
+`/gsd:pause-work` instead of writing anything automatically.
 
-1. **Enforce the remedy, not just prescribe it** — make `warn` mode (or a new tier) call
-   `/gsd:pause-work` (or the correct state verb, see below) as an actual tool
-   invocation rather than emitting text and continuing on the agent's discretion. Mirrors
-   `auto` mode's existing halt-and-invoke behavior, just without skipping the wave.
-2. **Fix pause-work.md to actually own `stopped_at`** — have it call
-   `gsd_run query state.record-session --stopped-at "..." --resume-file "..."` as part of
-   its `write_structured`/`commit` steps, using `cmdStateRecordSession`'s existing
-   non-clobbering path, instead of leaving `STATE.md` untouched. This closes the gap even
-   if enforcement (option 1) isn't done — at minimum, an agent that DOES correctly run
-   `/gsd:pause-work` would then have a safe, sanctioned way to record `stopped_at` instead
-   of improvising a direct frontmatter edit.
+Alternative, if the "breadcrumb for `/gsd:resume-work`" behavior is worth keeping: make the
+write additive/non-destructive — append rather than replace, or skip entirely when the
+existing `Stopped At` value is non-trivial (longer than a bare timestamp/status phrase)
+rather than always overwriting.
 
-## Methodological note (carried from cnc's report, not independently re-verified here)
+## Damage inventory (per claude-71, not independently re-verified in this repo)
+
+`grep -rl 'context exhaustion at' --include=STATE.md ~/Documents/git/` reportedly hits 10
+distinct repos on their machine. Not all warrant restoration — in several the terse value
+is truthful (the session really did end from exhaustion); only cases where a richer,
+pre-existing narrative was replaced (this repo's originally-reported incident pattern)
+warrant fixing, per-repo, when next touched. Not checked against this repo's own
+`.planning/STATE.md` history as part of this correction.
+
+## Methodological note (unchanged from original filing, still accurate)
 
 A competing theory — an unqualified `/tmp/STATE.before.md` from another repo overwriting
 this one, then "restored" — fit the *shape* of the damage (prose-looking corruption with
 the tool-written `progress:` block intact) but was ruled out on *content*: a foreign-file
-swap deposits text from elsewhere, not an accurate first-person summary of the writer's
-own state. Worth carrying as debugging guidance: a mechanism that explains the shape but
-not the content is a lead, not a cause.
+swap deposits text from elsewhere, not an accurate first-person summary of the writer's own
+state. Worth carrying as debugging guidance: a mechanism that explains the shape but not
+the content is a lead, not a cause. (This todo's own history is now a second instance of
+the same lesson, one level up: a mechanism — "agent hand-edited frontmatter" — that
+explained the shape of the damage but, unlike the rejected theory above, was never checked
+against the actual code before being filed.)
 
 ## Cross-references
 
-- Reported by peer session `cnc` (cross-session message, 2026-08-30); also routed to
-  `gsd-core-working` and `gsd-research`.
-- Same session's earlier, separately-filed finding from cnc, verified and narrowed:
-  `2026-08-30-init-phase-op-cannot-distinguish-archived-from-unplanned-phase.md` — cnc's
-  follow-up message repeated this claim verbatim; already accurately captured, no new
-  action needed there.
-- Related memory pattern (peer's framing): `project_gate_correct_but_aimed_at_fixture`,
-  `feedback_verify_the_artifact_not_the_exit_code`,
-  `feedback_checks_that_read_where_truth_was_not_written`.
+- Reported by peer session `cnc` (cross-session message, 2026-08-30) — original incident
+  report and the now-superseded root-cause hypothesis.
+- **Root cause corrected by peer session `claude-71`** (cross-session message,
+  2026-08-31); full writeup at their `~/.claude/reference/gsd-context-monitor-state-md-overwrite.md`
+  (not in this repo).
+- The independent observations this todo originally centered on — `warn` mode's remedy
+  being unenforced prose, and `pause-work.md` never touching `STATE.md` — remain true and
+  verified (`gsd-core/references/execute-phase-context-guard.md:13`,
+  `gsd-core/workflows/pause-work.md`), but are a separate, lower-priority concern from this
+  incident: they describe what happens if an agent *chooses* to hand-edit frontmatter under
+  pressure, which — per this correction — is not what happened here or, likely, in most
+  real instances of this symptom.
