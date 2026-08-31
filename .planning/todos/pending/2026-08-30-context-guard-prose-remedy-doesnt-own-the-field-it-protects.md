@@ -76,9 +76,28 @@ advisory message (a few lines below, already present) to prompt the user/agent t
 `/gsd:pause-work` instead of writing anything automatically.
 
 Alternative, if the "breadcrumb for `/gsd:resume-work`" behavior is worth keeping: make the
-write additive/non-destructive — append rather than replace, or skip entirely when the
-existing `Stopped At` value is non-trivial (longer than a bare timestamp/status phrase)
-rather than always overwriting.
+write non-destructive using a primitive that already exists in this codebase for exactly
+this shape of problem. `src/state-document.cts:802` exports
+`stateReplaceFieldIfTemplate(content, field, knownDefaults, newValue)` — it only overwrites
+a field when its *current* value matches a known, handler-generated default, leaving any
+richer/executor-authored content alone. `cmdStateRecordSession` (`src/state.cts:1665-1684`)
+already uses exactly this primitive to protect **Resume File** on the line immediately
+after `Stopped At` — but only in the "caller omitted `--resume-file`" branch; when the
+caller passes an explicit value, `Resume File` is overwritten unconditionally too, the same
+as `Stopped At` is today. So the precedent is real but not a literal drop-in: `Stopped At`
+also has **no entry in `KNOWN_TEMPLATE_DEFAULTS`** (`src/state-document.cts:691-717`,
+checked directly — only `Resume File`, `Status`, `Last Activity` have one) and the hook
+always passes an *explicit* `--stopped-at` value, so protecting it means calling
+`stateReplaceFieldIfTemplate` unconditionally against a new `KNOWN_TEMPLATE_DEFAULTS['Stopped At']`
+list (e.g. `['None']` or whatever the template's initial value is), not gating on
+omission the way `Resume File` does. Same primitive, small new table entry, one changed
+call site — still smaller and more precedented than a bespoke solution, just not
+byte-for-byte identical to the `Resume File` case.
+
+No preference between delete-the-block and make-it-non-destructive stated here — flagged by
+`gsd-core-working` (cross-session message, 2026-08-31) that a breadcrumb written at the
+exact moment of context degradation may be the wrong thing to write unguarded regardless,
+favoring deletion. Whoever implements this should decide.
 
 ## Damage inventory (per claude-71, not independently re-verified in this repo)
 
