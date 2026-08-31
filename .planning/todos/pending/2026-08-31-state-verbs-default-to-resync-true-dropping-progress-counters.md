@@ -64,15 +64,50 @@ an isolated oversight in `record-session`.
 
 ## Fix
 
-Per the codebase's own stated intent (`state.cts:201`), the fix is not per-site patching —
-compute `resync` via the same `shouldResyncStateProgress`-shaped logic `cmdStatePatch` and
-`cmdStateUpdate` already use, applied at each of the confirmed-affected call sites (and
-audited at the remaining `readModifyWriteStateMd` call sites in the module, since this sweep
-covered 9 of ~14). Alternative: invert `readModifyWriteStateMd`'s default from
-`resync: true` to `resync: false`, and have the small number of verbs that legitimately need
-a full rebuild (`cmdStateRebuild`, likely `cmdStateUpdateProgress`) opt in explicitly — fewer
-call sites to get right, since "don't touch progress" is the correct default for a
-body-only/session-metadata/decision-log write, and "do touch progress" is the exception.
+**Simplified 2026-08-31, by `gsd-core-working`, verified directly.** `shouldResyncStateProgress`
+(`src/state.cts:307-313`) only returns `true` when the fields being written intersect a
+three-field trigger set, `STATE_PROGRESS_RESYNC_FIELDS = new Set(['Progress', 'Total Plans
+in Phase', 'Total Phases'])` (`src/state.cts:301-305`). Confirmed both real call sites feed
+it exactly the fields being written: `cmdStatePatch:633` passes `Object.keys(patches)`,
+`cmdStateUpdate:766` passes `[field]`. None of the six confirmed-clobbering verbs ever write
+any of those three field names — `record-session` writes session labels, `record-metric`
+writes a metric row, `add-decision`/`add-blocker`/`add-roadmap-evolution`/`resolve-blocker`
+write body sections. So calling the helper at any of the six would provably return `false`
+every time — **"apply the documented policy" and "hardcode `resync: false`" are the same
+change at all six sites**, because none of them can write a progress-trigger field. No
+computed-value threading needed; six literal `{ resync: false }` additions, each
+independently justifiable by the verb's own field set.
+
+**Keep the default-inversion question separate.** `readModifyWriteStateMd` still defaults to
+`resync: true`, so the *next* verb added to this module inherits the same defect silently —
+that's a distinct, larger-blast-radius concern (changes behavior at every site currently
+relying on the rebuild, including the two below that couldn't be tested) and wants its own
+change and its own tests, not folded into the six-site fix.
+
+**Shape of the recommended fix: one PR, six sites, six tests** — concern: "state verbs that
+cannot write a progress-trigger field must not trigger a frontmatter rebuild." The
+default-inversion becomes a follow-up, with the two untestable verbs (`update-progress`,
+`rebuild`) as its open question.
+
+## Remaining before implementation — the three inconclusive verbs need a fixture that
+actually exercises them
+
+The empirical sweep's three "inconclusive" rows (`update-progress`, `prune`, `rebuild`) were
+no-ops against the fixture used (nothing to prune, nothing new to compute, no drift to
+reconcile) — not evidence of safety. `update-progress` and `rebuild` are plausibly *meant*
+to rebuild by design, so may not be defect candidates regardless of what a better fixture
+would show. `prune` is the genuinely open one — worth one more attempt with a fixture that
+seeds actual prunable metrics history (old enough to exceed `--keep-recent`) before ruling
+on whether it belongs in the six-site fix or is correctly exempt.
+
+**Second attempt, 2026-08-31: still inconclusive.** Retried with `current_phase: 10` and a
+`## Decisions` / `## Metrics` section each carrying a `### Phase 2` entry, `--keep-recent 3`
+(cutoff should be 7). Still returned `false` / no-op — either `resolveCurrentPhaseId` didn't
+pick up the synthetic `**Phase:** 10` line, or the seeded section headings don't match what
+`transitionCore`'s prune logic (`state-transition.cts`) actually scans for. Not chased
+further — getting `prune` to genuinely fire needs reading `transitionCore`'s exact expected
+section/heading shape first rather than more guessing, and this is a secondary completeness
+item, not a blocker for the six-site fix above.
 
 ## Cross-references
 
