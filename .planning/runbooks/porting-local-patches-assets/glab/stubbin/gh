@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+if [ "$1 $2" = "auth status" ]; then exit 1; fi   # simulate: gh NOT authenticated
+if [ "$1 $2" = "pr create" ]; then echo "STUB: gh pr create was invoked (args: $*)"; exit 0; fi
+echo "STUB gh: unhandled args: $*"; exit 0

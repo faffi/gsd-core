@@ -34,7 +34,55 @@ animation/
 # Internal planning documents
 reports/
 RAILROAD_ARCHITECTURE.md
-.planning/
+# Personal patch (local/track-planning-history): .planning/ itself is no longer
+# excluded (changed from bare `.planning/` to `.planning/*` — git cannot re-include
+# anything inside a directory excluded by the bare form, per gitignore's documented
+# limitation), so its contents are excluded one level down instead, with todos/seeds
+# negated back in. Applies to the `working` branch and `local/*` branches ONLY — next
+# and any real contribution branch stay byte-identical to upstream's blanket
+# .planning/ ignore, so this can never leak into a PR.
+.planning/*
+!.planning/todos/
+!.planning/seeds/
+!.planning/research/
+!.planning/reference/
+!.planning/runbooks/
+!.planning/notes/
+# Root-level milestone artifacts need their own negations: the directory
+# negations above work because `.planning/*` (not bare `.planning/`) leaves the
+# directory itself un-pruned, but each of these is a FILE at .planning/ root and
+# is still matched by `.planning/*`. Without these three lines /gsd-new-milestone
+# writes and "commits" them as ignored files — staging nothing, reporting
+# success, and losing them on the next `working` rebuild.
+!.planning/PROJECT.md
+!.planning/ROADMAP.md
+!.planning/STATE.md
+!.planning/REQUIREMENTS.md
+!.planning/MILESTONES.md
+# Phase and milestone-archive trees. Without these the whole lifecycle output —
+# every PLAN.md, SUMMARY.md and VERIFICATION.md — is untracked and destroyed by
+# the next `git checkout -B working next` rebuild. They are deliberately kept OUT
+# of upstream PRs by /gsd-pr-branch, which cherry-picks with path filtering, so
+# tracking them here costs nothing at contribution time.
+!.planning/phases/
+!.planning/milestones/
+
+# Personal patch (same branch): re-include our own CLAUDE.md, negating the bare
+# `CLAUDE.md` exclusion further up. Upstream ignores it because CONTEXT.md is the
+# tracked, citable agent contract and CLAUDE.md is meant as each contributor's
+# scratch layer. Ours is not scratch — it carries the branch model and the
+# .planning/ filing rules, i.e. the document explaining the tracked content above.
+#
+# Deliberately placed HERE rather than beside the exclusion it negates: local/
+# gitignore-makefile inserts `Makefile` at that same anchor, and both branches
+# editing one region conflicted on every single `make rebuild-working`. Order is
+# all gitignore requires — a negation only has to follow its exclusion, not sit
+# next to it.
+#
+# A bare `!` suffices because `CLAUDE.md` is a FILE pattern; the .planning/ case
+# above needed `.planning/*` first because git never descends into a directory
+# excluded in bare form.
+!CLAUDE.md
 analysis/
 docs/GSD-MASTER-ARCHITECTURE.md
 docs/GSD-RUST-IMPLEMENTATION-GUIDE.md

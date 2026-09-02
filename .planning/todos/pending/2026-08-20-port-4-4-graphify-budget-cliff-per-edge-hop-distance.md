@@ -1,0 +1,56 @@
+---
+created: 2026-08-20T23:14:00.000Z
+title: "Port 4.4 — graphify budget-cliff: per-edge hop distance in a WeakMap"
+area: tooling
+resolves_phase: 6
+severity: minor
+scope: Small
+scope_note: Inert on its own, directly TDD-testable, one translation detail to remember (extend the ExpandResult interface)
+files:
+  - src/graphify.cts (hopOf WeakMap — rest of the ~315-line block)
+  - src/graphify.cts:280-285 (ExpandResult interface — MUST be extended, missing from runbook §2)
+  - .planning/runbooks/porting-local-patches-to-the-fork.md (§4.4 — full analysis)
+---
+
+## Problem
+
+Graded budget trimming needs to know each edge's hop distance from a seed. The patch tracks it
+in a **`WeakMap` keyed by object identity**, deliberately *not* as a field on the edge — because
+`buildQueryResponse` passes edge objects through verbatim and a field would serialize into the
+response.
+
+## Validation verdict — 2026-08-20
+
+**Port. Low risk — INERT ON ITS OWN** (4.3b's consumer uses `(hopOf && hopOf.get(e)) ?? 0`).
+
+- ⚠ **Translation detail MISSING from runbook §2.** The `.cjs` patch just adds keys to an
+  object literal. The `.cts` port must **also extend the `ExpandResult` interface**
+  (`src/graphify.cts:280-285`) with `hopOf: WeakMap<GraphEdge, number>` and
+  `seedScoreOf: WeakMap<GraphNode, number>`. Miss this and the build fails.
+- ⚠ **One of its two stated rationales does not apply here.** The serialization concern is
+  real — but satisfied by *any* external table, not specifically by `WeakMap` (`Map.set` never
+  mutates the key either). The **retention** rationale is structurally void: `graph`/`scoped`
+  stays live for the whole synchronous body of `graphifyQuery`, and `hopOf`'s keys are the same
+  edge objects held in `graph.edges`, so every edge is strongly reachable until the call frame
+  is discarded — at which point `Map` and `WeakMap` become collectable simultaneously. graphify
+  runs as a one-shot CLI subprocess per query, so the leak it guards against **cannot occur**.
+  The choice is harmless; the justification is half moot. Downgrade the patch comment's
+  "best-reasoned" framing rather than repeating it upstream.
+- **Independently TDD-testable** — `seedAndExpand` is exported and returns the maps directly.
+
+## Solution
+
+Part of the graphify block (runbook §5 item 4). Land with or just after 4.3, **before** 4.3b.
+
+## SPEC cross-reference — 2026-08-25 (gsd-1.10.0-mods)
+
+`~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` R1 places hop distance third in
+the five-key ranking order (confidence → relation type → hop distance → weight → lexical
+tiebreak) that 4.3b's rewritten `applyBudget` must implement — confirming this WeakMap is load-
+bearing for the fix, not incidental. No change to this todo's own scope; land as part of the
+4.3/4.3b/4.4/4.5 unit.
+
+## Cross-references
+
+- Analysis: runbook §4.4 · the consumer: 4.3b todo · scoring sibling: 4.3 todo
+- SPEC unit: `~/Desktop/gsd-1.10.0-mods/SPEC-01-graphify-retrieval-quality.md` R1 (ranking key position 3)
