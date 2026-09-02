@@ -183,6 +183,59 @@ const SCENARIOS = [
     },
   },
   {
+    // #3183 follow-up: `<phase>-PLAN-CHECK.md` is a plan-check REPORT, not an
+    // executable plan, and is the same class of derivative artifact as
+    // `-PLAN-REVIEW.md` (row11) and `-OUTLINE.md` (row9). Without an anchored
+    // exclusion it falls through isRootPlanFile's deliberately-loose /PLAN/i
+    // fallback and inflates planCount, so a phase with N real plans and N
+    // summaries reads N+1/N and `completed` is false forever. Observed in
+    // production: a real "Phase 05 Plan Check" beside 6 PLAN/SUMMARY pairs made
+    // that phase unable to register as done. This row therefore pins `completed`
+    // as well as the count — the count is the mechanism, `completed` is the bug.
+    id: 'row11b',
+    label: '-PLAN-CHECK.md present -> NOT counted, phase still completes',
+    build(dir) {
+      writeFile(dir, '01-PLAN.md', planBody());
+      writeFile(dir, '01-SUMMARY.md', summaryBody());
+      writeFile(dir, '01-PLAN-CHECK.md', planBody());
+    },
+    check(scan) {
+      assert.strictEqual(scan.planCount, 1);
+      assert.strictEqual(scan.summaryCount, 1);
+      assert.strictEqual(scan.completed, true);
+      assert.ok(!scan.planFiles.includes('01-PLAN-CHECK.md'));
+    },
+  },
+  {
+    // The FALSE-COMPLETE mirror of row11b. On pristine, a phase directory
+    // holding nothing but a plan-check report and its own summary pairs 1:1
+    // and reports completed:true -- a phase that was never planned reads as
+    // done. Measured on pristine: allPlanFiles=1 planCount=1 summaryCount=1
+    // completed=TRUE.
+    //
+    // This is reachable only because #2349 gates completion on
+    // `allPlanFiles.length > 0` (deliberately, so an all-superseded phase
+    // reads complete rather than being pinned forever). That gate is correct
+    // for superseded plans, but it means ANY non-plan file that reaches
+    // allPlanFiles satisfies the "phase had plans" precondition by itself.
+    //
+    // Both directions close with the same exclusion, because it removes the
+    // file from allPlanFiles -- the array `completed` actually reads. This
+    // row is separate from row11b because they are distinct defects: a
+    // wrongly-incomplete phase nags, a wrongly-complete one is silent.
+    id: 'row11c',
+    label: 'PLAN-CHECK + its own SUMMARY -> phase does NOT falsely read complete',
+    build(dir) {
+      writeFile(dir, '01-PLAN-CHECK.md', planBody());
+      writeFile(dir, '01-PLAN-CHECK-SUMMARY.md', summaryBody());
+    },
+    check(scan) {
+      assert.strictEqual(scan.allPlanFiles.length, 0);
+      assert.strictEqual(scan.planCount, 0);
+      assert.strictEqual(scan.completed, false);
+    },
+  },
+  {
     id: 'row12',
     label: 'stray summary with no matching plan -> summaryCount excludes it',
     build(dir) {
