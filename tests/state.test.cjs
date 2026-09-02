@@ -1830,17 +1830,19 @@ describe('cmdStatePatch and cmdStateUpdate (state patch, state update)', () => {
 // cmdStateAdvancePlan, cmdStateRecordMetric, cmdStateUpdateProgress
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Shared by both cmdStateAdvancePlan describes below (the base advance case and
+// the workstream-mode fail-safe guard) — module scope so the sibling block sees it.
+const advanceFixture = [
+  '# Project State',
+  '',
+  '**Current Plan:** 1',
+  '**Total Plans in Phase:** 3',
+  '**Status:** Executing',
+  '**Last Activity:** 2024-01-10',
+].join('\n') + '\n';
+
 describe('cmdStateAdvancePlan (state advance-plan)', () => {
   let tmpDir;
-
-  const advanceFixture = [
-    '# Project State',
-    '',
-    '**Current Plan:** 1',
-    '**Total Plans in Phase:** 3',
-    '**Status:** Executing',
-    '**Last Activity:** 2024-01-10',
-  ].join('\n') + '\n';
 
   beforeEach(() => {
     tmpDir = createFixture();
@@ -1985,6 +1987,65 @@ describe('cmdStateAdvancePlan (state advance-plan)', () => {
 
     const updated = fs.readFileSync(path.join(tmpDir, '.planning', 'STATE.md'), 'utf-8');
     assert.ok(updated.includes('Phase complete'), 'Status should contain Phase complete');
+  });
+});
+
+describe('cmdStateAdvancePlan — workstream-mode fail-safe guard', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = createFixture();
+  });
+
+  afterEach(() => {
+    cleanup(tmpDir);
+  });
+
+  test('refuses (does not silently advance root STATE.md) when the active-workstream marker names a missing workstream dir', () => {
+    fs.writeFileSync(path.join(tmpDir, '.planning', 'STATE.md'), advanceFixture);
+    seedWorkstream(tmpDir, { name: 'tenant-vpc-reach', state: advanceFixture.replace('**Current Plan:** 1', '**Current Plan:** 5') });
+    fs.writeFileSync(path.join(tmpDir, '.planning', 'active-workstream'), 'tenant-vpc-reach\n');
+    // eslint-disable-next-line local/no-raw-rmsync-in-tests -- fault injection: simulates the workstream dir being renamed/archived without clearing the marker
+    fs.rmSync(path.join(tmpDir, '.planning', 'workstreams', 'tenant-vpc-reach'), { recursive: true, force: true });
+
+    const result = runGsdTools(['--json-errors', 'state', 'advance-plan'], tmpDir);
+
+    assert.equal(result.success, false, 'must refuse rather than silently succeed');
+    const payload = JSON.parse(result.error);
+    assert.equal(payload.reason, 'workstream_mode_marker_unresolved');
+    assert.equal(payload.marker_value, 'tenant-vpc-reach');
+    assert.equal(payload.marker_reason, 'missing_workstream_dir');
+
+    const rootState = fs.readFileSync(path.join(tmpDir, '.planning', 'STATE.md'), 'utf-8');
+    assert.ok(rootState.includes('**Current Plan:** 1'), 'root STATE.md must be untouched — this is the exact silent-corruption defect being guarded against');
+  });
+
+  test('refuses when in workstream mode with no active workstream set at all', () => {
+    fs.writeFileSync(path.join(tmpDir, '.planning', 'STATE.md'), advanceFixture);
+    seedWorkstream(tmpDir, { name: 'tenant-vpc-reach', state: advanceFixture });
+
+    const result = runGsdTools(['--json-errors', 'state', 'advance-plan'], tmpDir);
+
+    assert.equal(result.success, false, 'must refuse rather than silently succeed');
+    const payload = JSON.parse(result.error);
+    assert.equal(payload.reason, 'workstream_mode_none_active');
+
+    const rootState = fs.readFileSync(path.join(tmpDir, '.planning', 'STATE.md'), 'utf-8');
+    assert.ok(rootState.includes('**Current Plan:** 1'), 'root STATE.md must be untouched');
+  });
+
+  test('advances normally when a workstream exists and is correctly resolved via --ws', () => {
+    seedWorkstream(tmpDir, { name: 'tenant-vpc-reach', state: advanceFixture });
+
+    const result = runGsdTools(['state', 'advance-plan', '--ws', 'tenant-vpc-reach'], tmpDir);
+
+    assert.ok(result.success, `Command failed: ${result.error}`);
+    const output = JSON.parse(result.output);
+    assert.strictEqual(output.advanced, true);
+    assert.strictEqual(output.current_plan, 2);
+
+    const wsState = fs.readFileSync(path.join(tmpDir, '.planning', 'workstreams', 'tenant-vpc-reach', 'STATE.md'), 'utf-8');
+    assert.ok(wsState.includes('**Current Plan:** 2'), 'the workstream STATE.md, not root, must be advanced');
   });
 });
 
